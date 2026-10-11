@@ -36,6 +36,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# prisma generated client
+/src/generated/
+
 # local editor/agent settings
 .claude/settings.local.json
 

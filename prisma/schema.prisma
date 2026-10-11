@@ -1,0 +1,23 @@
+// Prisma schema for CustomerHowFar.
+// Connection URLs live in prisma7.config.ts (CLI) and src/lib/prisma.ts (app), not here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Global, admin-controlled settings. Holds a single row (id = 1).
+model AppSetting {
+  id              Int      @id @default(1)
+  /// Admin switch: when true, businesses must pay the listing fee to publish a listing.
+  paymentRequired Boolean  @default(false) @map("payment_required")
+  /// Listing fee in whole Naira.
+  listingFeeNaira Int      @default(5000) @map("listing_fee_naira")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
