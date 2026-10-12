@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { getSiteUrl, siteConfig } from "@/config/site";
-import { BottomNav } from "@/components/layout/bottom-nav";
+import { Suspense } from "react";
+import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import "./globals.css";
@@ -60,7 +61,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <SiteFooter />
-        <BottomNav />
+        <Suspense fallback={<BottomNavView pathname={null} />}>
+          <BottomNav />
+        </Suspense>
       </body>
     </html>
   );

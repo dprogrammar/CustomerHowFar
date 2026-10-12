@@ -13,10 +13,16 @@ const ITEMS: { label: string; href: string; icon: LucideIcon; highlight?: boolea
   { label: "Account", href: ROUTES.account, icon: UserRound },
 ];
 
-/** Fixed bottom tab bar for phones. Hidden from md (tablet) up. */
+/**
+ * Fixed bottom tab bar for phones. Hidden from md (tablet) up. Reads the URL, so render it
+ * inside <Suspense> with <BottomNavView pathname={null} /> as the fallback.
+ */
 export function BottomNav() {
-  const pathname = usePathname();
+  return <BottomNavView pathname={usePathname()} />;
+}
 
+/** The bar itself. With pathname null (still loading), no item is highlighted. */
+export function BottomNavView({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Bottom navigation"
@@ -24,7 +30,8 @@ export function BottomNav() {
     >
       <ul className="grid h-bottom-nav grid-cols-4">
         {ITEMS.map(({ label, href, icon: Icon, highlight }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active =
+            pathname !== null && (href === "/" ? pathname === "/" : pathname.startsWith(href));
           return (
             <li key={href}>
               <Link

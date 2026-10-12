@@ -49,11 +49,13 @@ model Profile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  businesses      Business[]
-  payments        Payment[]
-  reviews         Review[]
-  savedBusinesses SavedBusiness[]
-  contactEvents   ContactEvent[]
+  businesses          Business[]
+  payments            Payment[]
+  reviews             Review[]
+  savedBusinesses     SavedBusiness[]
+  contactEvents       ContactEvent[]
+  /// Moderation decisions this user made as an admin.
+  moderationDecisions ModerationDecision[]
 
   @@map("profiles")
 }
@@ -151,11 +153,13 @@ model Business {
   phone             String
   whatsappNumber    String         @map("whatsapp_number")
   email             String?
-  address           String
+  /// Location fields are filled in wizard step 2, so they are empty on early drafts.
+  /// Submitting for review requires all of them.
+  address           String?
   /// Area or landmark, e.g. "Opposite Shoprite, Lekki Phase 1".
   area              String?
-  stateId           Int            @map("state_id")
-  lgaId             Int            @map("lga_id")
+  stateId           Int?           @map("state_id")
+  lgaId             Int?           @map("lga_id")
   services          String[]       @default([])
   /// { mon: { open: "08:00", close: "18:00" } | null, ... }. Validated in app code.
   openingHours      Json?          @map("opening_hours")
@@ -177,23 +181,32 @@ model Business {
   reviewCount       Int            @default(0) @map("review_count")
   /// First time the business was approved and shown publicly.
   publishedAt       DateTime?      @map("published_at")
+  /// Last time the owner sent the listing for review (the admin queue is ordered by this).
+  submittedAt       DateTime?      @map("submitted_at")
+  /// The owner edited a live listing; it stays live but an admin should look again.
+  needsRecheck      Boolean        @default(false) @map("needs_recheck")
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
   /// Deleting a profile deletes their businesses (unless payments exist, see Payment).
-  owner         Profile         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner               Profile              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   /// Categories and locations in use cannot be deleted; deactivate them instead.
-  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  state         State           @relation(fields: [stateId], references: [id], onDelete: Restrict)
-  lga           Lga             @relation(fields: [lgaId, stateId], references: [id, stateId], onDelete: Restrict)
-  photos        BusinessPhoto[]
-  payments      Payment[]
-  reviews       Review[]
-  savedBy       SavedBusiness[]
-  contactEvents ContactEvent[]
+  category            Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  state               State?               @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  lga                 Lga?                 @relation(fields: [lgaId, stateId], references: [id, stateId], onDelete: Restrict)
+  photos              BusinessPhoto[]
+  payments            Payment[]
+  reviews             Review[]
+  savedBy             SavedBusiness[]
+  contactEvents       ContactEvent[]
+  moderationDecisions ModerationDecision[]
 
   // Public listings always filter by status, so status leads most composite indexes.
   @@index([status, createdAt(sort: Desc)])
+  /// Admin review queue: PENDING_REVIEW ordered by submission time.
+  @@index([status, submittedAt])
+  /// Admin "edited since approval" queue.
+  @@index([needsRecheck, status])
   @@index([status, isFeatured])
   @@index([categoryId, status])
   @@index([stateId, status])
@@ -334,4 +347,37 @@ model ContactEvent {
   @@index([businessId, createdAt(sort: Desc)])
   @@index([userId])
   @@map("contact_events")
+}
+
+// ---------------------------------------------------------------------------
+// Moderation
+// ---------------------------------------------------------------------------
+
+enum ModerationAction {
+  APPROVED
+  REJECTED
+  SUSPENDED
+  REINSTATED
+
+  @@map("moderation_action")
+}
+
+/// Append-only history of admin decisions on a business (the "review history").
+/// Named ModerationDecision to avoid confusion with customer Reviews.
+model ModerationDecision {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  businessId String           @map("business_id") @db.Uuid
+  /// Admin who decided. Null if that admin's profile was later deleted (history is kept).
+  adminId    String?          @map("admin_id") @db.Uuid
+  action     ModerationAction
+  /// Shown to the owner for REJECTED ("Changes requested: ...") and SUSPENDED.
+  comment    String?
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  admin    Profile? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([adminId])
+  @@map("moderation_decisions")
 }

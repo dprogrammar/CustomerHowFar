@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Store, UserRound } from "lucide-react";
 import { logoutAction } from "@/lib/auth/actions";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +86,16 @@ export function AccountMenu({ account }: { account: HeaderAccount }) {
             >
               <UserRound aria-hidden="true" className="size-4 text-gray-500" />
               My account
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm text-gray-800 hover:bg-muted"
+            >
+              <Store aria-hidden="true" className="size-4 text-gray-500" />
+              My businesses
             </Link>
           </li>
           <li>

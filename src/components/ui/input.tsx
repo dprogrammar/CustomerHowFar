@@ -60,3 +60,13 @@ export function Select({ className, icon, children, ...props }: SelectProps) {
     </div>
   );
 }
+
+/** Multi-line text. Same look as Input; grows with `rows`. */
+export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
+  return (
+    <textarea
+      className={cn(fieldBase, "h-auto min-h-28 px-3.5 py-3 leading-6", className)}
+      {...props}
+    />
+  );
+}

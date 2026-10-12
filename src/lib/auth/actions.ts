@@ -30,7 +30,11 @@ export type FormState = {
 };
 
 function fieldErrorsOf(error: z.ZodError): FieldErrors {
-  return z.flattenError(error).fieldErrors as FieldErrors;
+  // One message per field: several rules can fail on the same input (e.g. empty + format).
+  const all = z.flattenError(error).fieldErrors as Record<string, string[] | undefined>;
+  return Object.fromEntries(
+    Object.entries(all).map(([field, messages]) => [field, messages?.slice(0, 1)]),
+  ) as FieldErrors;
 }
 
 function text(formData: FormData, key: string) {

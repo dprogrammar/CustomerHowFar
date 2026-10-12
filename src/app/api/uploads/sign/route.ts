@@ -19,7 +19,7 @@ export async function POST() {
   // TODO(rate-limit): limit signatures per user before opening uploads to everyone.
 
   try {
-    return Response.json(createImageUploadSignature(), { headers: NO_STORE });
+    return Response.json(createImageUploadSignature(user.id), { headers: NO_STORE });
   } catch (error) {
     console.error(
       "[uploads/sign] failed to create signature:",

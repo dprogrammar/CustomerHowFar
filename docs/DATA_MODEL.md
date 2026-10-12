@@ -19,19 +19,34 @@ policies, so the public Supabase Data API cannot read or write anything.
 
 ## Models
 
-| Model           | Purpose                                                                                                                                                                                                                                                                                                                 |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AppSetting`    | Single row (id 1) of global admin settings: `paymentRequired` (listing fee on/off) and `listingFeeNaira`.                                                                                                                                                                                                               |
-| `Profile`       | App profile for a Supabase Auth user (same UUID). Name, phone, avatar and `role` (`CUSTOMER`, `BUSINESS_OWNER`, `ADMIN`).                                                                                                                                                                                               |
-| `Category`      | Service categories (e.g. Electricians). `slug` is permanent. `icon` is a lucide icon name resolved via `src/config/category-icons.ts`. `parentId` allows subcategories. Deactivate (`isActive = false`) instead of deleting.                                                                                            |
-| `State`         | The 36 states plus the FCT (37 rows).                                                                                                                                                                                                                                                                                   |
-| `Lga`           | All 774 Local Government Areas, each linked to its state. Slugs are unique _per state_ (Surulere exists in Lagos and Oyo).                                                                                                                                                                                              |
-| `Business`      | A listing owned by a `Profile`: name, category, contact details (phone, WhatsApp, email), address, state + LGA, services, opening hours (JSON), social links, logo/cover images, status, verification and featured flags, and denormalized counters (`viewCount`, `contactClickCount`, `ratingAverage`, `reviewCount`). |
-| `BusinessPhoto` | Work photos for a business (Cloudinary public ID, dimensions, caption, order). Max 12 per business, enforced in app code.                                                                                                                                                                                               |
-| `Payment`       | Listing-fee payments via Paystack: amount in kobo, unique `reference` (makes webhooks idempotent), status, `paidAt`, raw provider `metadata`.                                                                                                                                                                           |
-| `Review`        | A customer's rating (1–5) and comment. One per user per business. `HIDDEN` reviews are kept but not shown.                                                                                                                                                                                                              |
-| `SavedBusiness` | A user's saved/favourite businesses (composite key: user + business).                                                                                                                                                                                                                                                   |
-| `ContactEvent`  | One row per WhatsApp/call/email click, for analytics. `userId` is null for signed-out visitors.                                                                                                                                                                                                                         |
+| Model                | Purpose                                                                                                                                                                                                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AppSetting`         | Single row (id 1) of global admin settings: `paymentRequired` (listing fee on/off) and `listingFeeNaira`.                                                                                                                                                                                                               |
+| `Profile`            | App profile for a Supabase Auth user (same UUID). Name, phone, avatar and `role` (`CUSTOMER`, `BUSINESS_OWNER`, `ADMIN`).                                                                                                                                                                                               |
+| `Category`           | Service categories (e.g. Electricians). `slug` is permanent. `icon` is a lucide icon name resolved via `src/config/category-icons.ts`. `parentId` allows subcategories. Deactivate (`isActive = false`) instead of deleting.                                                                                            |
+| `State`              | The 36 states plus the FCT (37 rows).                                                                                                                                                                                                                                                                                   |
+| `Lga`                | All 774 Local Government Areas, each linked to its state. Slugs are unique _per state_ (Surulere exists in Lagos and Oyo).                                                                                                                                                                                              |
+| `Business`           | A listing owned by a `Profile`: name, category, contact details (phone, WhatsApp, email), address, state + LGA, services, opening hours (JSON), social links, logo/cover images, status, verification and featured flags, and denormalized counters (`viewCount`, `contactClickCount`, `ratingAverage`, `reviewCount`). |
+| `BusinessPhoto`      | Work photos for a business (Cloudinary public ID, dimensions, caption, order). Max 12 per business, enforced in app code.                                                                                                                                                                                               |
+| `Payment`            | Listing-fee payments via Paystack: amount in kobo, unique `reference` (makes webhooks idempotent), status, `paidAt`, raw provider `metadata`.                                                                                                                                                                           |
+| `Review`             | A customer's rating (1–5) and comment. One per user per business. `HIDDEN` reviews are kept but not shown.                                                                                                                                                                                                              |
+| `SavedBusiness`      | A user's saved/favourite businesses (composite key: user + business).                                                                                                                                                                                                                                                   |
+| `ContactEvent`       | One row per WhatsApp/call/email click, for analytics. `userId` is null for signed-out visitors.                                                                                                                                                                                                                         |
+| `ModerationDecision` | Append-only history of admin decisions on a business: `action` (`APPROVED`, `REJECTED`, `SUSPENDED`, `REINSTATED`), `comment`, admin, time. The latest `REJECTED` comment is shown to the owner as "Changes requested". (Named to avoid confusion with customer `Review`s.)                                             |
+
+### Onboarding fields on `Business`
+
+- `submittedAt`: last time the owner sent the listing for review; the admin queue is ordered by it.
+- `needsRecheck`: set when the owner edits a live (`APPROVED`) listing. It stays live, but admins
+  should look again. Cleared on (re)submission.
+- `address`, `stateId`, `lgaId` are nullable because a draft is created at wizard step 1 and the
+  location is added at step 2. Database CHECK constraints guarantee an LGA is never set without
+  its state, and that anything past `DRAFT` has a complete location.
+- Owners may have at most **5** businesses; a business at most **12** work photos (both enforced
+  on the server with row locks, so they can't be raced).
+- Images are uploaded straight from the browser to Cloudinary into a per-user folder
+  (`customerhowfar/users/<userId>/`). Saving a photo verifies it exists, is in that user's folder,
+  is jpg/png/webp and is at most 5 MB. Removed or replaced images are deleted from Cloudinary.
 
 ### Key relationships and delete rules
 
@@ -77,6 +92,13 @@ stateDiagram-v2
     SUSPENDED --> APPROVED: admin reinstates
 ```
 
+- Status changes happen only on the server (`src/lib/business/actions.ts`); nothing the browser
+  sends can set a status. Owners can't edit `SUSPENDED` listings.
+- Payment never publishes: a confirmed payment moves `PENDING_PAYMENT` to `PENDING_REVIEW`
+  (`src/lib/business/payments.ts`), and only an admin can approve.
+- A business with a `SUCCESS` payment is never asked to pay again (after edits, rejection or
+  resubmission). If the fee is switched off while a listing awaits payment, the owner can submit
+  it for review without paying.
 - Only **`APPROVED`** businesses are shown publicly.
 - **`DRAFT`** listings are visible only to their owner and can be edited freely.
 - Whether payment is required is read from `AppSetting.paymentRequired` **at submit time**.

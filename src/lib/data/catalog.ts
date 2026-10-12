@@ -61,3 +61,23 @@ export async function getLgasByStateSlug(stateSlug: string): Promise<LgaListItem
     select: { id: true, slug: true, name: true },
   });
 }
+
+/**
+ * All LGAs grouped by state id, for instant client-side filtering in forms (about 7 KB
+ * gzipped, cheaper on slow networks than a round trip every time the state changes).
+ */
+export async function getLgasGroupedByState(): Promise<
+  Record<number, { id: number; name: string }[]>
+> {
+  "use cache";
+  cacheLife("weeks");
+  cacheTag(CATALOG_TAGS.locations);
+
+  const lgas = await prisma.lga.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, stateId: true },
+  });
+  const grouped: Record<number, { id: number; name: string }[]> = {};
+  for (const { stateId, id, name } of lgas) (grouped[stateId] ??= []).push({ id, name });
+  return grouped;
+}

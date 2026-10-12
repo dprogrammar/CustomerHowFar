@@ -4,7 +4,9 @@ import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
 import { getSupabasePublicEnv } from "./env";
 
 /** Paths that need a signed-in user. Pages re-check on the server; this is an early redirect. */
-const PROTECTED_PREFIXES = ["/account", "/admin"];
+const PROTECTED_PREFIXES = ["/account", "/admin", "/dashboard", "/business/new"];
+/** Owner pages for a specific business: /business/<id>/edit, /pay, /submitted. */
+const PROTECTED_PATTERN = /^\/business\/[^/]+\/(edit|pay|submitted)\/?$/;
 
 /** Pages that make no sense once signed in; signed-in visitors go to their account. */
 const GUEST_ONLY = ["/login", "/signup"];
@@ -38,9 +40,9 @@ export async function updateSession(request: NextRequest) {
   const signedIn = Boolean(data?.claims?.sub);
 
   const { pathname, search } = request.nextUrl;
-  const isProtected = PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  const isProtected =
+    PROTECTED_PATTERN.test(pathname) ||
+    PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   const redirectTo = (path: string) => {
     const redirect = NextResponse.redirect(new URL(path, request.url));

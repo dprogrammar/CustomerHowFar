@@ -51,17 +51,26 @@ export type ImageUploadSignature = {
 };
 
 /**
- * Signs a direct browser-to-Cloudinary image upload. The browser must send back exactly the
- * signed params (folder, allowed_formats, timestamp); any other param is rejected by Cloudinary.
- * Signatures expire one hour after `timestamp`.
+ * Each user uploads into their own folder. Saving a photo checks the folder, so a user can
+ * never attach an image someone else uploaded.
  */
-export function createImageUploadSignature(): ImageUploadSignature {
+export function userUploadFolder(userId: string) {
+  return `${UPLOAD_FOLDER}/users/${userId}`;
+}
+
+/**
+ * Signs a direct browser-to-Cloudinary image upload into the user's folder. The browser must
+ * send back exactly the signed params (folder, allowed_formats, timestamp); any other param is
+ * rejected by Cloudinary. Signatures expire one hour after `timestamp`.
+ */
+export function createImageUploadSignature(userId: string): ImageUploadSignature {
   const { cloudName, apiKey, apiSecret } = getCloudinaryEnv();
   const timestamp = Math.round(Date.now() / 1000);
   const allowedFormats = ALLOWED_IMAGE_FORMATS.join(",");
+  const folder = userUploadFolder(userId);
 
   const signature = cloudinary.utils.api_sign_request(
-    { timestamp, folder: UPLOAD_FOLDER, allowed_formats: allowedFormats },
+    { timestamp, folder, allowed_formats: allowedFormats },
     apiSecret,
   );
 
@@ -71,7 +80,7 @@ export function createImageUploadSignature(): ImageUploadSignature {
     uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
     timestamp,
     signature,
-    folder: UPLOAD_FOLDER,
+    folder,
     allowedFormats,
     maxFileBytes: MAX_IMAGE_BYTES,
   };
@@ -88,10 +97,15 @@ export type VerifiedImage = {
 /**
  * Cloudinary cannot enforce a byte limit on signed uploads, so verify every uploaded image on
  * the server before saving its public ID (e.g. to a listing). Images that break the rules are
- * deleted. Returns null when the image is missing or was rejected.
+ * deleted. Pass `folder` (e.g. userUploadFolder(userId)) to also require that the image was
+ * uploaded into that folder. Returns null when the image is missing or was rejected.
  */
-export async function verifyUploadedImage(publicId: string): Promise<VerifiedImage | null> {
-  if (!publicId.startsWith(`${UPLOAD_FOLDER}/`)) return null;
+export async function verifyUploadedImage(
+  publicId: string,
+  folder: string = UPLOAD_FOLDER,
+): Promise<VerifiedImage | null> {
+  if (!/^[\w\-/]+$/.test(publicId) || publicId.includes("..")) return null;
+  if (!publicId.startsWith(`${folder}/`) || !publicId.startsWith(`${UPLOAD_FOLDER}/`)) return null;
 
   const sdk = getCloudinary();
   let resource;
@@ -114,4 +128,25 @@ export async function verifyUploadedImage(publicId: string): Promise<VerifiedIma
     width: resource.width,
     height: resource.height,
   };
+}
+
+/**
+ * Deletes an image from Cloudinary (and purges CDN caches). Best effort: a failure is logged,
+ * never thrown, because the database change it follows has already been committed.
+ */
+export async function deleteCloudinaryImage(publicId: string | null | undefined): Promise<boolean> {
+  if (!publicId || !publicId.startsWith(`${UPLOAD_FOLDER}/`)) return false;
+  try {
+    const result = await getCloudinary().uploader.destroy(publicId, {
+      resource_type: "image",
+      invalidate: true,
+    });
+    return result.result === "ok" || result.result === "not found";
+  } catch (error) {
+    console.error(
+      "[cloudinary] delete failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return false;
+  }
 }
