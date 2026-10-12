@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheck, MapPin, Star } from "lucide-react";
-import { getCategory } from "@/config/categories";
+import { getCategorySeed } from "@/config/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { ROUTES } from "@/config/navigation";
 import { getState } from "@/config/states";
 import type { FeaturedBusiness } from "@/data/sample";
@@ -24,9 +25,9 @@ export function BusinessCard({
   business: FeaturedBusiness;
   isSample?: boolean;
 }) {
-  const category = getCategory(business.categorySlug);
+  // Sample data only: names come from the seed config. Real listings will pass DB rows.
+  const category = getCategorySeed(business.categorySlug);
   const state = getState(business.stateSlug);
-  const CategoryIcon = category?.icon;
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-raised has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-ring">
@@ -35,7 +36,7 @@ export function BusinessCard({
         aria-hidden="true"
         className="relative flex h-28 items-center justify-center bg-gradient-to-br from-brand-50 via-brand-100 to-accent-100"
       >
-        {CategoryIcon && <CategoryIcon className="size-12 text-brand-700/25" />}
+        {category && <CategoryIcon name={category.icon} className="size-12 text-brand-700/25" />}
         <span className="absolute -bottom-6 left-4 flex size-14 items-center justify-center rounded-xl bg-brand-700 text-lg font-bold text-white ring-4 ring-white">
           {initials(business.name)}
         </span>

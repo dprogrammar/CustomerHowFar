@@ -1,5 +1,8 @@
 // Prisma schema for CustomerHowFar.
 // Connection URLs live in prisma7.config.ts (CLI) and src/lib/prisma.ts (app), not here.
+// Conventions: snake_case tables/columns via @map, UUIDv7 primary keys (time-ordered, index
+// friendly) for user-generated rows, integer keys for small reference tables, money in kobo.
+// See docs/DATA_MODEL.md for the model overview and the business status flow.
 
 generator client {
   provider = "prisma-client"
@@ -9,6 +12,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Settings and users
+// ---------------------------------------------------------------------------
 
 /// Global, admin-controlled settings. Holds a single row (id = 1).
 model AppSetting {
@@ -42,5 +49,289 @@ model Profile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  businesses      Business[]
+  payments        Payment[]
+  reviews         Review[]
+  savedBusinesses SavedBusiness[]
+  contactEvents   ContactEvent[]
+
   @@map("profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Reference data: categories and locations
+// ---------------------------------------------------------------------------
+
+/// Service category. Top-level when parentId is null; otherwise a subcategory.
+model Category {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String
+  /// URL identifier. Never change once live (used in links and SEO).
+  slug        String   @unique
+  /// lucide-react icon name, resolved through src/config/category-icons.ts.
+  icon        String
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  parentId    String?  @map("parent_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  /// Deleting a parent that still has subcategories is blocked.
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children   Category[] @relation("CategoryTree")
+  businesses Business[]
+
+  @@index([parentId])
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+/// The 36 states plus the FCT.
+model State {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lgas       Lga[]
+  businesses Business[]
+
+  @@map("states")
+}
+
+/// Local Government Area (774 in total). Names repeat across states (e.g. Surulere in
+/// Lagos and Oyo), so slugs are unique per state, not globally.
+model Lga {
+  id        Int      @id @default(autoincrement())
+  stateId   Int      @map("state_id")
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  state      State      @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  businesses Business[]
+
+  @@unique([stateId, slug])
+  /// Target of Business's composite foreign key, guaranteeing a business's LGA is in its state.
+  @@unique([id, stateId])
+  @@map("lgas")
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace
+// ---------------------------------------------------------------------------
+
+/// Lifecycle: DRAFT -> (PENDING_PAYMENT if payment is required) -> PENDING_REVIEW ->
+/// APPROVED | REJECTED. Admins can SUSPEND an approved business.
+enum BusinessStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+
+  @@map("business_status")
+}
+
+model Business {
+  id                String         @id @default(uuid(7)) @db.Uuid
+  ownerId           String         @map("owner_id") @db.Uuid
+  name              String
+  /// URL identifier. Unique across the site.
+  slug              String         @unique
+  categoryId        String         @map("category_id") @db.Uuid
+  tagline           String?        @db.VarChar(120)
+  description       String?
+  yearsOfExperience Int?           @map("years_of_experience") @db.SmallInt
+  /// Nigerian numbers stored in E.164 form: +234XXXXXXXXXX.
+  phone             String
+  whatsappNumber    String         @map("whatsapp_number")
+  email             String?
+  address           String
+  /// Area or landmark, e.g. "Opposite Shoprite, Lekki Phase 1".
+  area              String?
+  stateId           Int            @map("state_id")
+  lgaId             Int            @map("lga_id")
+  services          String[]       @default([])
+  /// { mon: { open: "08:00", close: "18:00" } | null, ... }. Validated in app code.
+  openingHours      Json?          @map("opening_hours")
+  instagramUrl      String?        @map("instagram_url")
+  facebookUrl       String?        @map("facebook_url")
+  tiktokUrl         String?        @map("tiktok_url")
+  websiteUrl        String?        @map("website_url")
+  /// Cloudinary public IDs.
+  logoPublicId      String?        @map("logo_public_id")
+  coverPublicId     String?        @map("cover_public_id")
+  status            BusinessStatus @default(DRAFT)
+  rejectionReason   String?        @map("rejection_reason")
+  isVerified        Boolean        @default(false) @map("is_verified")
+  isFeatured        Boolean        @default(false) @map("is_featured")
+  /// Denormalized counters, updated by app code (reviews and contact events are the source).
+  viewCount         Int            @default(0) @map("view_count")
+  contactClickCount Int            @default(0) @map("contact_click_count")
+  ratingAverage     Decimal        @default(0) @map("rating_average") @db.Decimal(3, 2)
+  reviewCount       Int            @default(0) @map("review_count")
+  /// First time the business was approved and shown publicly.
+  publishedAt       DateTime?      @map("published_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  /// Deleting a profile deletes their businesses (unless payments exist, see Payment).
+  owner         Profile         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Categories and locations in use cannot be deleted; deactivate them instead.
+  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  state         State           @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  lga           Lga             @relation(fields: [lgaId, stateId], references: [id, stateId], onDelete: Restrict)
+  photos        BusinessPhoto[]
+  payments      Payment[]
+  reviews       Review[]
+  savedBy       SavedBusiness[]
+  contactEvents ContactEvent[]
+
+  // Public listings always filter by status, so status leads most composite indexes.
+  @@index([status, createdAt(sort: Desc)])
+  @@index([status, isFeatured])
+  @@index([categoryId, status])
+  @@index([stateId, status])
+  @@index([lgaId, stateId, status])
+  @@index([ownerId])
+  @@index([createdAt(sort: Desc)])
+  @@map("businesses")
+}
+
+/// Work photos. At most 12 per business (enforced in app code).
+model BusinessPhoto {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  /// Cloudinary public ID.
+  publicId   String   @unique @map("public_id")
+  width      Int
+  height     Int
+  caption    String?  @db.VarChar(200)
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, sortOrder])
+  @@map("business_photos")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  ABANDONED
+
+  @@map("payment_status")
+}
+
+enum PaymentProvider {
+  PAYSTACK
+
+  @@map("payment_provider")
+}
+
+enum Currency {
+  NGN
+
+  @@map("currency")
+}
+
+/// Listing-fee payments. Financial records are never deleted: businesses and profiles with
+/// payments cannot be hard-deleted (Restrict); suspend or anonymize them instead.
+model Payment {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  businessId String          @map("business_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  /// Amount in kobo (1 Naira = 100 kobo). Integers only, never floats.
+  amountKobo Int             @map("amount_kobo")
+  currency   Currency        @default(NGN)
+  provider   PaymentProvider @default(PAYSTACK)
+  /// Our reference sent to the provider; unique so webhooks are idempotent.
+  reference  String          @unique
+  status     PaymentStatus   @default(PENDING)
+  paidAt     DateTime?       @map("paid_at")
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user     Profile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("payments")
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+
+  @@map("review_status")
+}
+
+/// One review per user per business. Rating 1-5 (enforced by a CHECK constraint).
+model Review {
+  id         String       @id @default(uuid(7)) @db.Uuid
+  businessId String       @map("business_id") @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  rating     Int          @db.SmallInt
+  comment    String?
+  status     ReviewStatus @default(PUBLISHED)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([businessId, status, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("reviews")
+}
+
+/// A user's saved (favourite) business.
+model SavedBusiness {
+  userId     String   @map("user_id") @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@id([userId, businessId])
+  @@index([businessId])
+  @@map("saved_businesses")
+}
+
+enum ContactType {
+  WHATSAPP
+  CALL
+  EMAIL
+
+  @@map("contact_type")
+}
+
+/// Analytics: one row per contact click. High volume, so a bigint key.
+model ContactEvent {
+  id         BigInt      @id @default(autoincrement())
+  businessId String      @map("business_id") @db.Uuid
+  type       ContactType
+  /// Null for signed-out visitors, or after the user's profile is deleted.
+  userId     String?     @map("user_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     Profile? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("contact_events")
 }

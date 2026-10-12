@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { CATEGORIES } from "@/config/categories";
 import { MAIN_NAV, ROUTES } from "@/config/navigation";
 import { getCurrentUser, initials } from "@/lib/auth/session";
+import { getActiveCategories } from "@/lib/data/catalog";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { QuickSearch } from "@/components/search/quick-search";
@@ -11,7 +11,7 @@ import { AccountMenu, type HeaderAccount } from "./account-menu";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 
-const menuCategories = CATEGORIES.slice(0, 8).map(({ slug, name }) => ({ slug, name }));
+type MenuCategory = { slug: string; name: string };
 
 /** Only the fields the client components need. */
 async function getHeaderAccount(): Promise<HeaderAccount | null> {
@@ -42,11 +42,16 @@ async function DesktopAccount() {
   );
 }
 
-async function MobileMenuWithAccount() {
-  return <MobileMenu categories={menuCategories} account={await getHeaderAccount()} />;
+async function MobileMenuWithAccount({ categories }: { categories: MenuCategory[] }) {
+  return <MobileMenu categories={categories} account={await getHeaderAccount()} />;
 }
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  // Cached reference data, so it is part of the prerendered shell.
+  const menuCategories = (await getActiveCategories())
+    .slice(0, 8)
+    .map(({ slug, name }) => ({ slug, name }));
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
       <Container>
@@ -83,7 +88,7 @@ export function SiteHeader() {
 
           <div className="ml-auto md:hidden">
             <Suspense fallback={<MobileMenu categories={menuCategories} account={undefined} />}>
-              <MobileMenuWithAccount />
+              <MobileMenuWithAccount categories={menuCategories} />
             </Suspense>
           </div>
         </div>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Compass } from "lucide-react";
-import { CATEGORIES } from "@/config/categories";
 import { ROUTES } from "@/config/navigation";
+import { getActiveCategories } from "@/lib/data/catalog";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ServiceSearchForm } from "@/components/search/service-search-form";
@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function NotFound() {
+export default async function NotFound() {
+  const popular = (await getActiveCategories()).slice(0, 6);
+
   return (
     <section aria-labelledby="not-found-title" className="bg-surface py-14 sm:py-20">
       <Container className="max-w-3xl text-center">
@@ -51,7 +53,7 @@ export default function NotFound() {
         <nav aria-label="Popular categories" className="mt-10">
           <h2 className="text-sm font-semibold text-gray-900">Popular categories</h2>
           <ul className="mt-3 flex flex-wrap justify-center gap-2">
-            {CATEGORIES.slice(0, 6).map((category) => (
+            {popular.map((category) => (
               <li key={category.slug}>
                 <Link
                   href={ROUTES.category(category.slug)}

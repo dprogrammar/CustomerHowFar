@@ -1,6 +1,6 @@
 import { MapPin, Search } from "lucide-react";
 import { ROUTES } from "@/config/navigation";
-import { NIGERIAN_STATES } from "@/config/states";
+import { getStates } from "@/lib/data/catalog";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
  * Two-field search: service + Nigerian state. A plain GET form to /search?q=&state=,
  * so it works before JavaScript loads.
  */
-export function ServiceSearchForm({ id, className }: { id: string; className?: string }) {
+export async function ServiceSearchForm({ id, className }: { id: string; className?: string }) {
+  const states = await getStates();
+
   return (
     <form
       action={ROUTES.search}
@@ -48,7 +50,7 @@ export function ServiceSearchForm({ id, className }: { id: string; className?: s
           className="border-transparent bg-muted shadow-none sm:bg-white"
         >
           <option value="">All of Nigeria</option>
-          {NIGERIAN_STATES.map((state) => (
+          {states.map((state) => (
             <option key={state.slug} value={state.slug}>
               {state.name}
             </option>
