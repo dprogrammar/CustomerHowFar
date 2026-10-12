@@ -1,0 +1,52 @@
+import { Camera, MessageCircle, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Container } from "@/components/ui/container";
+import { SectionHeading } from "./section-heading";
+
+const POINTS: { title: string; description: string; icon: LucideIcon }[] = [
+  {
+    title: "Verified businesses",
+    description:
+      "Look for the Verified badge. We check that a business is real and reachable before it is verified.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Real work photos",
+    description:
+      "See photos of jobs a business has actually done, so you know the quality before you call.",
+    icon: Camera,
+  },
+  {
+    title: "Direct contact",
+    description:
+      "Talk to the business yourself on WhatsApp or by phone. No middlemen and no booking fees.",
+    icon: MessageCircle,
+  },
+];
+
+export function TrustSection() {
+  return (
+    <section aria-labelledby="trust-title" className="py-12 sm:py-16">
+      <Container>
+        <SectionHeading
+          id="trust-title"
+          eyebrow="Why CustomerHowFar"
+          title="Hire with confidence"
+          align="center"
+        />
+        <ul className="grid gap-4 sm:gap-6 md:grid-cols-3">
+          {POINTS.map(({ title, description, icon: Icon }) => (
+            <li key={title} className="flex gap-4 md:flex-col md:items-center md:text-center">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-700 ring-1 ring-accent-200">
+                <Icon aria-hidden="true" className="size-6" />
+              </span>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Container>
+    </section>
+  );
+}

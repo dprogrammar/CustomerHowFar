@@ -1,24 +1,58 @@
-import { siteConfig } from "@/config/site";
+import { ROUTES } from "@/config/navigation";
+import { getSiteUrl, siteConfig } from "@/config/site";
+import { BusinessCta } from "@/components/home/business-cta";
+import { CategoryGrid } from "@/components/home/category-grid";
+import { FeaturedBusinesses } from "@/components/home/featured-businesses";
+import { Hero } from "@/components/home/hero";
+import { HowItWorks } from "@/components/home/how-it-works";
+import { TrustSection } from "@/components/home/trust-section";
+
+function StructuredData() {
+  const url = getSiteUrl();
+  const data = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: siteConfig.name,
+        url,
+        description: siteConfig.description,
+        inLanguage: "en-NG",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${url}${ROUTES.search}?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "Organization",
+        name: siteConfig.name,
+        url,
+        logo: `${url}/icon.svg`,
+        areaServed: { "@type": "Country", name: "Nigeria" },
+      },
+    ],
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      // Escape "<" so the JSON can never close the script tag.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
+}
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-green-50 to-white px-6 py-16 text-center">
-      <div className="flex w-full max-w-xl flex-col items-center gap-6">
-        <span
-          aria-hidden="true"
-          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-700 text-2xl font-bold text-white shadow-sm"
-        >
-          C
-        </span>
-        <h1 className="text-4xl font-bold tracking-tight text-green-900 sm:text-5xl">
-          {siteConfig.name}
-        </h1>
-        <p className="text-lg text-green-800/80 sm:text-xl">{siteConfig.tagline}</p>
-        <p className="rounded-full bg-green-700 px-5 py-2 text-sm font-semibold tracking-wide text-white uppercase">
-          Coming soon
-        </p>
-      </div>
-      <footer className="mt-16 text-sm text-green-900/60">&copy; {siteConfig.name}</footer>
-    </main>
+    <>
+      <StructuredData />
+      <Hero />
+      <CategoryGrid />
+      <HowItWorks />
+      <FeaturedBusinesses />
+      <BusinessCta />
+      <TrustSection />
+    </>
   );
 }
