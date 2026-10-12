@@ -34,6 +34,21 @@ policies, so the public Supabase Data API cannot read or write anything.
 | `ContactEvent`       | One row per WhatsApp/call/email click, for analytics. `userId` is null for signed-out visitors.                                                                                                                                                                                                                         |
 | `ModerationDecision` | Append-only history of admin decisions on a business: `action` (`APPROVED`, `REJECTED`, `SUSPENDED`, `REINSTATED`), `comment`, admin, time. The latest `REJECTED` comment is shown to the owner as "Changes requested". (Named to avoid confusion with customer `Review`s.)                                             |
 
+| `SettingChange` | Audit log of admin changes to `AppSetting`: field, old and new value, admin, time.
+
+### Moderation and payment fairness
+
+- `ModerationDecision.action` also records `RECHECKED`, `VERIFIED`/`UNVERIFIED` and
+  `FEATURED`/`UNFEATURED`, so every admin change to a listing is in its history.
+- Admin actions only apply if the listing's status is still what the admin saw (row lock +
+  status check), so two admins can't act on the same listing at once.
+- `Business.feeRequiredAtSubmit` records whether the listing fee was on when the owner last
+  submitted. Approval requires a `SUCCESS` payment only when it is true; listings submitted
+  while the fee was off are honored for free even if the fee is switched on later.
+- Admin access: `requireAdmin()` (database role) guards every admin page and action. The proxy
+  also returns a real 404 for `/admin` unless the login token's `app_metadata.role` is
+  `admin` (set by `npm run make-admin`).
+
 ### Onboarding fields on `Business`
 
 - `submittedAt`: last time the owner sent the listing for review; the admin queue is ordered by it.

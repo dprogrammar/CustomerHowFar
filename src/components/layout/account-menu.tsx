@@ -2,11 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, Store, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, ShieldCheck, Store, UserRound } from "lucide-react";
 import { logoutAction } from "@/lib/auth/actions";
 import { cn } from "@/lib/utils";
 
-export type HeaderAccount = { fullName: string; email: string; initials: string };
+export type HeaderAccount = { fullName: string; email: string; initials: string; isAdmin: boolean };
 
 export function Avatar({ initials, className }: { initials: string; className?: string }) {
   return (
@@ -98,6 +98,18 @@ export function AccountMenu({ account }: { account: HeaderAccount }) {
               My businesses
             </Link>
           </li>
+          {account.isAdmin && (
+            <li>
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-brand-800 hover:bg-muted"
+              >
+                <ShieldCheck aria-hidden="true" className="size-4 text-brand-700" />
+                Admin
+              </Link>
+            </li>
+          )}
           <li>
             <form action={logoutAction}>
               <button

@@ -56,6 +56,8 @@ model Profile {
   contactEvents       ContactEvent[]
   /// Moderation decisions this user made as an admin.
   moderationDecisions ModerationDecision[]
+  /// Settings changes this user made as an admin.
+  settingChanges      SettingChange[]
 
   @@map("profiles")
 }
@@ -140,53 +142,56 @@ enum BusinessStatus {
 }
 
 model Business {
-  id                String         @id @default(uuid(7)) @db.Uuid
-  ownerId           String         @map("owner_id") @db.Uuid
-  name              String
+  id                  String         @id @default(uuid(7)) @db.Uuid
+  ownerId             String         @map("owner_id") @db.Uuid
+  name                String
   /// URL identifier. Unique across the site.
-  slug              String         @unique
-  categoryId        String         @map("category_id") @db.Uuid
-  tagline           String?        @db.VarChar(120)
-  description       String?
-  yearsOfExperience Int?           @map("years_of_experience") @db.SmallInt
+  slug                String         @unique
+  categoryId          String         @map("category_id") @db.Uuid
+  tagline             String?        @db.VarChar(120)
+  description         String?
+  yearsOfExperience   Int?           @map("years_of_experience") @db.SmallInt
   /// Nigerian numbers stored in E.164 form: +234XXXXXXXXXX.
-  phone             String
-  whatsappNumber    String         @map("whatsapp_number")
-  email             String?
+  phone               String
+  whatsappNumber      String         @map("whatsapp_number")
+  email               String?
   /// Location fields are filled in wizard step 2, so they are empty on early drafts.
   /// Submitting for review requires all of them.
-  address           String?
+  address             String?
   /// Area or landmark, e.g. "Opposite Shoprite, Lekki Phase 1".
-  area              String?
-  stateId           Int?           @map("state_id")
-  lgaId             Int?           @map("lga_id")
-  services          String[]       @default([])
+  area                String?
+  stateId             Int?           @map("state_id")
+  lgaId               Int?           @map("lga_id")
+  services            String[]       @default([])
   /// { mon: { open: "08:00", close: "18:00" } | null, ... }. Validated in app code.
-  openingHours      Json?          @map("opening_hours")
-  instagramUrl      String?        @map("instagram_url")
-  facebookUrl       String?        @map("facebook_url")
-  tiktokUrl         String?        @map("tiktok_url")
-  websiteUrl        String?        @map("website_url")
+  openingHours        Json?          @map("opening_hours")
+  instagramUrl        String?        @map("instagram_url")
+  facebookUrl         String?        @map("facebook_url")
+  tiktokUrl           String?        @map("tiktok_url")
+  websiteUrl          String?        @map("website_url")
   /// Cloudinary public IDs.
-  logoPublicId      String?        @map("logo_public_id")
-  coverPublicId     String?        @map("cover_public_id")
-  status            BusinessStatus @default(DRAFT)
-  rejectionReason   String?        @map("rejection_reason")
-  isVerified        Boolean        @default(false) @map("is_verified")
-  isFeatured        Boolean        @default(false) @map("is_featured")
+  logoPublicId        String?        @map("logo_public_id")
+  coverPublicId       String?        @map("cover_public_id")
+  status              BusinessStatus @default(DRAFT)
+  rejectionReason     String?        @map("rejection_reason")
+  isVerified          Boolean        @default(false) @map("is_verified")
+  isFeatured          Boolean        @default(false) @map("is_featured")
   /// Denormalized counters, updated by app code (reviews and contact events are the source).
-  viewCount         Int            @default(0) @map("view_count")
-  contactClickCount Int            @default(0) @map("contact_click_count")
-  ratingAverage     Decimal        @default(0) @map("rating_average") @db.Decimal(3, 2)
-  reviewCount       Int            @default(0) @map("review_count")
+  viewCount           Int            @default(0) @map("view_count")
+  contactClickCount   Int            @default(0) @map("contact_click_count")
+  ratingAverage       Decimal        @default(0) @map("rating_average") @db.Decimal(3, 2)
+  reviewCount         Int            @default(0) @map("review_count")
   /// First time the business was approved and shown publicly.
-  publishedAt       DateTime?      @map("published_at")
+  publishedAt         DateTime?      @map("published_at")
   /// Last time the owner sent the listing for review (the admin queue is ordered by this).
-  submittedAt       DateTime?      @map("submitted_at")
+  submittedAt         DateTime?      @map("submitted_at")
   /// The owner edited a live listing; it stays live but an admin should look again.
-  needsRecheck      Boolean        @default(false) @map("needs_recheck")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
+  needsRecheck        Boolean        @default(false) @map("needs_recheck")
+  /// Whether the listing fee was switched on when this business was last submitted.
+  /// Approval requires a successful payment only when this is true (fairness rule).
+  feeRequiredAtSubmit Boolean        @default(false) @map("fee_required_at_submit")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
 
   /// Deleting a profile deletes their businesses (unless payments exist, see Payment).
   owner               Profile              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -358,6 +363,12 @@ enum ModerationAction {
   REJECTED
   SUSPENDED
   REINSTATED
+  /// Admin reviewed an owner's edits to a live listing (needsRecheck cleared).
+  RECHECKED
+  VERIFIED
+  UNVERIFIED
+  FEATURED
+  UNFEATURED
 
   @@map("moderation_action")
 }
@@ -380,4 +391,22 @@ model ModerationDecision {
   @@index([businessId, createdAt(sort: Desc)])
   @@index([adminId])
   @@map("moderation_decisions")
+}
+
+/// Audit log of admin changes to AppSetting (who changed what, and when).
+model SettingChange {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  /// Null if that admin's profile was later deleted (the log is kept).
+  adminId   String?  @map("admin_id") @db.Uuid
+  /// AppSetting field name, e.g. "paymentRequired" or "listingFeeNaira".
+  field     String
+  oldValue  String   @map("old_value")
+  newValue  String   @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  admin Profile? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([adminId])
+  @@map("setting_changes")
 }

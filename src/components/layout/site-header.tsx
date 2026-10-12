@@ -18,7 +18,12 @@ async function getHeaderAccount(): Promise<HeaderAccount | null> {
   try {
     const user = await getCurrentUser();
     return user
-      ? { fullName: user.fullName, email: user.email, initials: initials(user.fullName) }
+      ? {
+          fullName: user.fullName,
+          email: user.email,
+          initials: initials(user.fullName),
+          isAdmin: user.role === "ADMIN",
+        }
       : null;
   } catch (error) {
     // Let Next.js handle its own control-flow errors (e.g. stopping a prerender at cookies()).

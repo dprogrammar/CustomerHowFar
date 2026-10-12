@@ -17,6 +17,8 @@ const variants = {
   /** For use on dark/brand backgrounds. */
   inverse: "bg-white text-brand-800 shadow-xs hover:bg-brand-50",
   link: "h-auto px-0 text-brand-700 underline-offset-4 hover:underline",
+  /** Destructive actions (suspend, delete). */
+  danger: "bg-red-700 text-white shadow-xs hover:bg-red-800 active:bg-red-900",
 } as const;
 
 const sizes = {

@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { notifyAdminOfSubmission } from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -14,10 +15,10 @@ export async function markPaymentSuccessful(
   reference: string,
   details: { paidAt?: Date; metadata?: Prisma.InputJsonValue } = {},
 ) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { reference } });
     if (!payment) throw new Error("Unknown payment reference.");
-    if (payment.status === "SUCCESS") return { alreadyProcessed: true };
+    if (payment.status === "SUCCESS") return { alreadyProcessed: true, movedToReview: null };
 
     await tx.payment.update({
       where: { id: payment.id },
@@ -26,10 +27,14 @@ export async function markPaymentSuccessful(
 
     // Lock the business row so a concurrent submit/approve can't interleave.
     await tx.$queryRaw`SELECT id FROM businesses WHERE id = ${payment.businessId}::uuid FOR UPDATE`;
-    await tx.business.updateMany({
+    const moved = await tx.business.updateMany({
       where: { id: payment.businessId, status: "PENDING_PAYMENT" },
       data: { status: "PENDING_REVIEW", submittedAt: new Date(), needsRecheck: false },
     });
-    return { alreadyProcessed: false };
+    return { alreadyProcessed: false, movedToReview: moved.count > 0 ? payment.businessId : null };
   });
+
+  // Tell the admin team once the change has committed. Never throws.
+  if (result.movedToReview) await notifyAdminOfSubmission(result.movedToReview, false);
+  return { alreadyProcessed: result.alreadyProcessed };
 }

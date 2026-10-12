@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
+import { notifyAdminOfSubmission } from "@/lib/email/notifications";
 import { Prisma } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/auth/actions";
 import { ensureProfile } from "@/lib/auth/profile";
@@ -562,19 +564,28 @@ export async function submitBusinessAction(
     return tx.business.updateMany({
       // Only move from a submittable status (guards against double submits and races).
       where: { id: businessId, ownerId: session.id, status: { in: [...SUBMITTABLE_STATUSES] } },
+      // feeRequiredAtSubmit records the fee switch at this moment: listings submitted while
+      // the fee is off are honored for free; otherwise approval requires a payment.
       data:
         nextStatus === "PENDING_REVIEW"
           ? {
               status: nextStatus,
+              feeRequiredAtSubmit: paymentRequired,
               submittedAt: new Date(),
               needsRecheck: false,
               rejectionReason: null,
             }
-          : { status: nextStatus },
+          : { status: nextStatus, feeRequiredAtSubmit: paymentRequired },
     });
   });
   if (updated.count === 0) {
     return { status: "error", message: "This listing has already been submitted." };
+  }
+
+  if (nextStatus === "PENDING_REVIEW") {
+    // After the response: email never delays or undoes the submission.
+    const resubmission = business.submittedAt !== null || business.status === "REJECTED";
+    after(() => notifyAdminOfSubmission(businessId, resubmission));
   }
 
   redirect(

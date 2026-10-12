@@ -69,12 +69,13 @@ export async function requireUser(returnTo: string): Promise<CurrentUser> {
 }
 
 /**
- * For admin pages and actions. Not signed in: redirect to login. Signed in but not an admin:
- * 404, so admin routes are not revealed.
+ * For every admin page and server action. Anyone who is not an admin (including signed-out
+ * visitors) gets a 404, so the admin area is never revealed. The database role is the
+ * authority; the proxy's token check is only an early filter.
  */
-export async function requireAdmin(returnTo = "/admin"): Promise<CurrentUser> {
-  const user = await requireUser(returnTo);
-  if (user.role !== "ADMIN") notFound();
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADMIN") notFound();
   return user;
 }
 

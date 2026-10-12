@@ -7,7 +7,13 @@ import { ROUTES } from "@/config/navigation";
  */
 export function QuickSearch({ id, className }: { id: string; className?: string }) {
   return (
-    <form action={ROUTES.search} method="get" role="search" className={className}>
+    <form
+      action={ROUTES.search}
+      method="get"
+      role="search"
+      aria-label="Search services"
+      className={className}
+    >
       <label htmlFor={id} className="sr-only">
         Search for a service or business
       </label>

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ChevronRight, LogOut, Menu, Store, UserRound, X } from "lucide-react";
+import { ChevronRight, LogOut, Menu, ShieldCheck, Store, UserRound, X } from "lucide-react";
 import { MAIN_NAV, ROUTES } from "@/config/navigation";
 import { logoutAction } from "@/lib/auth/actions";
 import { buttonVariants } from "@/components/ui/button";
@@ -98,6 +98,14 @@ export function MobileMenu({
                       My businesses
                     </Link>
                   </li>
+                  {account.isAdmin && (
+                    <li>
+                      <Link href="/admin" onClick={close} className={`${itemClass} text-brand-800`}>
+                        <ShieldCheck aria-hidden="true" className="size-5 text-brand-700" />
+                        Admin
+                      </Link>
+                    </li>
+                  )}
                   <li>
                     <form action={logoutAction}>
                       <button type="submit" className={`${itemClass} text-red-700`}>

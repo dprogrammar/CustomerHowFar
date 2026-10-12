@@ -4,7 +4,7 @@ import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
 import { getSupabasePublicEnv } from "./env";
 
 /** Paths that need a signed-in user. Pages re-check on the server; this is an early redirect. */
-const PROTECTED_PREFIXES = ["/account", "/admin", "/dashboard", "/business/new"];
+const PROTECTED_PREFIXES = ["/account", "/dashboard", "/business/new"];
 /** Owner pages for a specific business: /business/<id>/edit, /pay, /submitted. */
 const PROTECTED_PATTERN = /^\/business\/[^/]+\/(edit|pay|submitted)\/?$/;
 
@@ -51,6 +51,26 @@ export async function updateSession(request: NextRequest) {
     redirect.headers.set("Cache-Control", "private, no-store");
     return redirect;
   };
+
+  // Admin area: anyone whose token isn't flagged as admin gets a real 404 (rewritten to a path
+  // that matches no route). The flag lives in app_metadata, which only the server can set;
+  // pages and actions still verify the database role with requireAdmin().
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const appMetadata = (data?.claims?.app_metadata ?? {}) as { role?: unknown };
+    if (!signedIn || appMetadata.role !== "admin") {
+      // Server action calls (POST) get a plain 404; page views get the normal 404 page.
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return new NextResponse("Not found", {
+          status: 404,
+          headers: { "Cache-Control": "private, no-store" },
+        });
+      }
+      const notFound = NextResponse.rewrite(new URL("/_not-found-admin", request.url));
+      response.cookies.getAll().forEach((cookie) => notFound.cookies.set(cookie));
+      notFound.headers.set("Cache-Control", "private, no-store");
+      return notFound;
+    }
+  }
 
   if (!signedIn && isProtected) return redirectTo(loginUrl(pathname + search));
   if (signedIn && GUEST_ONLY.includes(pathname)) {
