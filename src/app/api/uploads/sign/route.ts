@@ -1,15 +1,22 @@
+import { getSessionUser } from "@/lib/auth/session";
 import { createImageUploadSignature } from "@/lib/cloudinary";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
 /**
  * Returns a short-lived signature for a direct browser-to-Cloudinary image upload.
- * The API secret never leaves the server. POST so the response is never cached or prefetched.
+ * Requires a signed-in user. The API secret never leaves the server. POST so the response is
+ * never cached or prefetched.
  */
 export async function POST() {
-  // TODO(auth): Require a signed-in user once login is built (e.g. check the Supabase session
-  // via createClient() from "@/lib/supabase/server" and return 401 if absent), and add rate
-  // limiting per user/IP. Until then anyone can request a signature for the upload folder.
+  const user = await getSessionUser();
+  if (!user) {
+    return Response.json(
+      { error: "Please log in to upload images." },
+      { status: 401, headers: NO_STORE },
+    );
+  }
+  // TODO(rate-limit): limit signatures per user before opening uploads to everyone.
 
   try {
     return Response.json(createImageUploadSignature(), { headers: NO_STORE });

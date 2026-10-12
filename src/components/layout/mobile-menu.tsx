@@ -2,18 +2,30 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ChevronRight, Menu, X } from "lucide-react";
+import { ChevronRight, LogOut, Menu, UserRound, X } from "lucide-react";
 import { MAIN_NAV, ROUTES } from "@/config/navigation";
+import { logoutAction } from "@/lib/auth/actions";
 import { buttonVariants } from "@/components/ui/button";
+import { Avatar, type HeaderAccount } from "./account-menu";
 import { LogoMark } from "./logo";
 
 type MenuCategory = { slug: string; name: string };
 
+const itemClass =
+  "flex h-12 w-full items-center gap-3 rounded-lg px-3 text-base font-medium text-gray-900 hover:bg-muted";
+
 /**
  * Hamburger menu for small screens. Uses the native <dialog> element, which provides focus
  * trapping, Escape to close and a backdrop without extra JavaScript.
+ * `account`: the signed-in user, null when signed out, undefined while still loading.
  */
-export function MobileMenu({ categories }: { categories: MenuCategory[] }) {
+export function MobileMenu({
+  categories,
+  account,
+}: {
+  categories: MenuCategory[];
+  account: HeaderAccount | null | undefined;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const close = () => dialogRef.current?.close();
 
@@ -55,27 +67,55 @@ export function MobileMenu({ categories }: { categories: MenuCategory[] }) {
           </div>
 
           <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-2 py-3">
+            {account && (
+              <div className="mx-1 mb-3 flex items-center gap-3 rounded-xl bg-brand-50 p-3">
+                <Avatar initials={account.initials} className="size-11 text-base" />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-gray-900">{account.fullName}</p>
+                  <p className="truncate text-sm text-muted-foreground">{account.email}</p>
+                </div>
+              </div>
+            )}
             <ul className="space-y-0.5">
               {MAIN_NAV.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    onClick={close}
-                    className="flex h-12 items-center rounded-lg px-3 text-base font-medium text-gray-900 hover:bg-muted"
-                  >
+                  <Link href={link.href} onClick={close} className={itemClass}>
                     {link.label}
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link
-                  href={ROUTES.login}
-                  onClick={close}
-                  className="flex h-12 items-center rounded-lg px-3 text-base font-medium text-gray-900 hover:bg-muted"
-                >
-                  Log in
-                </Link>
-              </li>
+              {account && (
+                <>
+                  <li>
+                    <Link href={ROUTES.account} onClick={close} className={itemClass}>
+                      <UserRound aria-hidden="true" className="size-5 text-gray-500" />
+                      My account
+                    </Link>
+                  </li>
+                  <li>
+                    <form action={logoutAction}>
+                      <button type="submit" className={`${itemClass} text-red-700`}>
+                        <LogOut aria-hidden="true" className="size-5" />
+                        Log out
+                      </button>
+                    </form>
+                  </li>
+                </>
+              )}
+              {account === null && (
+                <>
+                  <li>
+                    <Link href={ROUTES.login} onClick={close} className={itemClass}>
+                      Log in
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href={ROUTES.signup} onClick={close} className={itemClass}>
+                      Create an account
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
 
             <p className="mt-5 mb-1 px-3 text-xs font-semibold tracking-wide text-gray-500 uppercase">

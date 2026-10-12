@@ -8,6 +8,8 @@ export const ROUTES = {
   category: (slug: string) => `/categories/${slug}`,
   business: (slug: string) => `/business/${slug}`,
   login: "/login",
+  signup: "/signup",
+  forgotPassword: "/forgot-password",
   account: "/account",
   listBusiness: "/list-business",
   about: "/about",

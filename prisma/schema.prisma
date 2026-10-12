@@ -21,3 +21,26 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+enum Role {
+  CUSTOMER
+  BUSINESS_OWNER
+  ADMIN
+
+  @@map("role")
+}
+
+/// App profile for a Supabase Auth user. Created on first successful sign-in.
+model Profile {
+  /// Same UUID as the Supabase auth user (auth.users.id).
+  id        String   @id @db.Uuid
+  fullName  String   @map("full_name")
+  email     String   @unique
+  phone     String?
+  avatarUrl String?  @map("avatar_url")
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}

@@ -1,13 +1,50 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { CATEGORIES } from "@/config/categories";
 import { MAIN_NAV, ROUTES } from "@/config/navigation";
+import { getCurrentUser, initials } from "@/lib/auth/session";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { QuickSearch } from "@/components/search/quick-search";
+import { AccountMenu, type HeaderAccount } from "./account-menu";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 
 const menuCategories = CATEGORIES.slice(0, 8).map(({ slug, name }) => ({ slug, name }));
+
+/** Only the fields the client components need. */
+async function getHeaderAccount(): Promise<HeaderAccount | null> {
+  try {
+    const user = await getCurrentUser();
+    return user
+      ? { fullName: user.fullName, email: user.email, initials: initials(user.fullName) }
+      : null;
+  } catch (error) {
+    // Let Next.js handle its own control-flow errors (e.g. stopping a prerender at cookies()).
+    unstable_rethrow(error);
+    // Never let a database hiccup take down every page; show the signed-out header instead.
+    console.error(
+      "[header] could not load account:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+async function DesktopAccount() {
+  const account = await getHeaderAccount();
+  if (account) return <AccountMenu account={account} />;
+  return (
+    <Link href={ROUTES.login} className={buttonVariants({ variant: "ghost", size: "md" })}>
+      Log in
+    </Link>
+  );
+}
+
+async function MobileMenuWithAccount() {
+  return <MobileMenu categories={menuCategories} account={await getHeaderAccount()} />;
+}
 
 export function SiteHeader() {
   return (
@@ -31,16 +68,23 @@ export function SiteHeader() {
           </nav>
 
           <div className="ml-auto hidden items-center gap-2 md:flex lg:ml-0">
-            <Link href={ROUTES.login} className={buttonVariants({ variant: "ghost", size: "md" })}>
-              Log in
-            </Link>
+            {/* The session is read per request, so it streams in behind this boundary. */}
+            <Suspense
+              fallback={
+                <span aria-hidden="true" className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
+              }
+            >
+              <DesktopAccount />
+            </Suspense>
             <Link href={ROUTES.listBusiness} className={buttonVariants({ variant: "primary" })}>
               List your business
             </Link>
           </div>
 
           <div className="ml-auto md:hidden">
-            <MobileMenu categories={menuCategories} />
+            <Suspense fallback={<MobileMenu categories={menuCategories} account={undefined} />}>
+              <MobileMenuWithAccount />
+            </Suspense>
           </div>
         </div>
 
