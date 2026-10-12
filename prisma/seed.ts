@@ -64,13 +64,34 @@ function validateSourceData() {
   return total;
 }
 
+/** Initial bank account for listing-fee transfers. Admins change it in /admin/settings. */
+const INITIAL_BANK_ACCOUNT = {
+  bankName: "First Bank of Nigeria",
+  bankAccountNumber: "3122146201",
+  bankAccountName: "Ebofuale Victor",
+};
+
 async function seedAppSettings() {
   // Single row with id 1. Never overwrite values an admin has changed.
-  await prisma.appSetting.upsert({
+  const existing = await prisma.appSetting.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1, paymentRequired: false, listingFeeNaira: 5000 },
+    create: {
+      id: 1,
+      paymentRequired: false,
+      listingFeeNaira: 5000,
+      manualTransferEnabled: true,
+      ...INITIAL_BANK_ACCOUNT,
+    },
   });
+  // Fill bank details only if they have never been set (first run after the payments migration).
+  if (!existing.bankName && !existing.bankAccountNumber && !existing.bankAccountName) {
+    await prisma.appSetting.update({
+      where: { id: 1 },
+      data: { ...INITIAL_BANK_ACCOUNT, manualTransferEnabled: true },
+    });
+    console.log("Bank transfer details seeded.");
+  }
 }
 
 async function seedCategories() {

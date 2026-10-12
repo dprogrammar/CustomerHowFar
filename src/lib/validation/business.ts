@@ -46,6 +46,16 @@ export const basicsSchema = z
     phone: requiredNigerianMobile("phone number"),
     sameAsPhone: z.literal("on").optional(),
     whatsappNumber: z.string().optional(),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(254, "Email address is too long.")
+      .refine(
+        (v) => v === "" || z.email().safeParse(v).success,
+        "Enter a valid email address, or leave it empty.",
+      )
+      .transform((v) => (v === "" ? null : v)),
   })
   .transform((data, ctx) => {
     if (data.sameAsPhone) return { ...data, whatsappNumber: data.phone };

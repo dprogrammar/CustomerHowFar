@@ -13,11 +13,16 @@ const dateTime = new Intl.DateTimeFormat("en-NG", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Africa/Lagos",
 });
 
 const FIELD_LABELS: Record<string, { label: string; format: (v: string) => string }> = {
   paymentRequired: { label: "Require listing fee", format: (v) => (v === "true" ? "On" : "Off") },
   listingFeeNaira: { label: "Listing fee", format: (v) => formatNaira(Number(v)) },
+  manualTransferEnabled: { label: "Bank transfer", format: (v) => (v === "true" ? "On" : "Off") },
+  bankName: { label: "Bank name", format: (v) => v || "(empty)" },
+  bankAccountNumber: { label: "Account number", format: (v) => v || "(empty)" },
+  bankAccountName: { label: "Account name", format: (v) => v || "(empty)" },
 };
 
 async function Settings() {
@@ -31,11 +36,17 @@ async function Settings() {
         className="rounded-xl border border-border bg-white p-4 shadow-card sm:p-6"
       >
         <h2 id="fee-title" className="mb-4 text-lg font-semibold text-gray-900">
-          Listing fee
+          Listing fee and payment methods
         </h2>
         <SettingsForm
-          paymentRequired={settings.paymentRequired}
-          listingFeeNaira={settings.listingFeeNaira}
+          initial={{
+            paymentRequired: settings.paymentRequired,
+            listingFeeNaira: settings.listingFeeNaira,
+            manualTransferEnabled: settings.manualTransferEnabled,
+            bankName: settings.bankName,
+            bankAccountNumber: settings.bankAccountNumber,
+            bankAccountName: settings.bankAccountName,
+          }}
         />
       </section>
 

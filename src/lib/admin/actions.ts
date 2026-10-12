@@ -12,6 +12,7 @@ import {
 } from "@/lib/email/notifications";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
 import { prisma } from "@/lib/prisma";
+import { approveBusinessInTx, RuleError, StaleError } from "./moderation";
 
 // Every action: requireAdmin() first (404 for anyone else), validate with zod, then change the
 // business inside a transaction ONLY if its status is still what the admin saw, and record a
@@ -40,9 +41,6 @@ const withComment = (label: string) =>
       .min(10, `Please write a ${label} of at least 10 characters.`)
       .max(1000, "Keep it under 1000 characters."),
   });
-
-class StaleError extends Error {}
-class RuleError extends Error {}
 
 async function moderate(
   adminId: string,
@@ -103,31 +101,13 @@ export async function approveListingAction(
   if (!parsed.success) return invalid(parsed.error);
   let slug: string;
   try {
-    slug = await moderate(
-      admin.id,
-      parsed.data,
-      ["PENDING_REVIEW"],
-      "APPROVED",
-      null,
-      async (current, tx) => {
-        // Payment fairness: if the fee was on when they submitted, they must have paid.
-        if (current.feeRequiredAtSubmit) {
-          const paid = await tx.payment.count({
-            where: { businessId: parsed.data.businessId, status: "SUCCESS" },
-          });
-          if (paid === 0) {
-            throw new RuleError(
-              "Can't approve: this listing was submitted while the listing fee was on, and it has no successful payment.",
-            );
-          }
-        }
-        return {
-          status: "APPROVED",
-          publishedAt: current.publishedAt ?? new Date(),
-          needsRecheck: false,
-          rejectionReason: null,
-        };
-      },
+    // Shared approval rules (status check + payment fairness), see lib/admin/moderation.ts.
+    slug = await prisma.$transaction((tx) =>
+      approveBusinessInTx(tx, {
+        businessId: parsed.data.businessId,
+        adminId: admin.id,
+        expectedStatus: parsed.data.expectedStatus,
+      }),
     );
   } catch (error) {
     return fail(error);
@@ -283,6 +263,13 @@ export async function setListingFlagAction(
   return { ok: true, message: `${label} ${value ? "on" : "off"}.` };
 }
 
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Use ${max} characters or fewer.`)
+    .transform((v) => (v === "" ? null : v));
+
 const settingsSchema = z.object({
   paymentRequired: z.boolean(),
   listingFeeNaira: z
@@ -290,7 +277,23 @@ const settingsSchema = z.object({
     .int("Use whole naira, no kobo.")
     .min(100, "The fee must be at least ₦100.")
     .max(1_000_000, "The fee must be at most ₦1,000,000."),
+  manualTransferEnabled: z.boolean(),
+  bankName: optionalText(80),
+  bankAccountNumber: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\s/g, ""))
+    .refine((v) => v === "" || /^\d{10}$/.test(v), "The account number must be exactly 10 digits.")
+    .transform((v) => (v === "" ? null : v)),
+  bankAccountName: optionalText(80),
 });
+
+type SettingsInput = z.output<typeof settingsSchema>;
+
+/** Same rule as lib/payments/methods.ts: transfer is usable only when fully configured. */
+function transferUsable(s: SettingsInput) {
+  return s.manualTransferEnabled && Boolean(s.bankName && s.bankAccountName && s.bankAccountNumber);
+}
 
 export async function updateSettingsAction(
   input: z.input<typeof settingsSchema>,
@@ -300,28 +303,39 @@ export async function updateSettingsAction(
   if (!parsed.success) return invalid(parsed.error);
   const next = parsed.data;
 
+  if (next.manualTransferEnabled && !transferUsable(next)) {
+    return {
+      ok: false,
+      error: "To turn on bank transfer, fill in the bank name, account number and account name.",
+    };
+  }
+  // Owners must always have a way to pay while the fee is on.
+  if (next.paymentRequired && !transferUsable(next)) {
+    return {
+      ok: false,
+      error:
+        "The listing fee is on, so at least one payment method must be enabled. Turn on bank transfer (with complete bank details) or turn the fee off.",
+    };
+  }
+
   const changes = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM app_settings WHERE id = 1 FOR UPDATE`;
-    const current = await tx.appSetting.upsert({
-      where: { id: 1 },
-      update: {},
-      create: { id: 1 },
-    });
-    const diff: { field: string; oldValue: string; newValue: string }[] = [];
-    if (current.paymentRequired !== next.paymentRequired) {
-      diff.push({
-        field: "paymentRequired",
-        oldValue: String(current.paymentRequired),
-        newValue: String(next.paymentRequired),
-      });
-    }
-    if (current.listingFeeNaira !== next.listingFeeNaira) {
-      diff.push({
-        field: "listingFeeNaira",
-        oldValue: String(current.listingFeeNaira),
-        newValue: String(next.listingFeeNaira),
-      });
-    }
+    const current = await tx.appSetting.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+    const fields = [
+      "paymentRequired",
+      "listingFeeNaira",
+      "manualTransferEnabled",
+      "bankName",
+      "bankAccountNumber",
+      "bankAccountName",
+    ] as const;
+    const diff = fields
+      .filter((field) => current[field] !== next[field])
+      .map((field) => ({
+        field,
+        oldValue: String(current[field] ?? ""),
+        newValue: String(next[field] ?? ""),
+      }));
     if (diff.length === 0) return diff;
     await tx.appSetting.update({ where: { id: 1 }, data: next });
     await tx.settingChange.createMany({ data: diff.map((d) => ({ ...d, adminId: admin.id })) });
@@ -330,5 +344,5 @@ export async function updateSettingsAction(
 
   refresh();
   if (changes.length === 0) return { ok: true, message: "No changes to save." };
-  return { ok: true, message: "Settings saved. They apply to new submissions immediately." };
+  return { ok: true, message: "Settings saved. They apply immediately." };
 }

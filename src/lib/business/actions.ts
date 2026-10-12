@@ -119,6 +119,7 @@ export async function saveBasicsAction(
     phone: text(formData, "phone"),
     whatsappNumber: text(formData, "whatsappNumber"),
     sameAsPhone: text(formData, "sameAsPhone"),
+    email: text(formData, "email"),
   };
   const parsed = basicsSchema.safeParse({
     ...values,
@@ -140,6 +141,7 @@ export async function saveBasicsAction(
     tagline: parsed.data.tagline,
     phone: parsed.data.phone,
     whatsappNumber: parsed.data.whatsappNumber,
+    email: parsed.data.email,
   };
 
   if (!businessId) {
@@ -175,6 +177,7 @@ async function createDraft(
     tagline: string | null;
     phone: string;
     whatsappNumber: string;
+    email: string | null;
   },
 ): Promise<{ id: string } | { error: string }> {
   for (let attempt = 0; attempt < 3; attempt++) {

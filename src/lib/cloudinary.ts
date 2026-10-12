@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { ALLOWED_IMAGE_FORMATS, MAX_IMAGE_BYTES, UPLOAD_FOLDER } from "@/config/uploads";
 
@@ -48,6 +49,8 @@ export type ImageUploadSignature = {
   folder: string;
   allowedFormats: string;
   maxFileBytes: number;
+  /** Delivery type. "authenticated" = private (payment proofs). Omitted = public. */
+  type?: "authenticated";
 };
 
 /**
@@ -145,6 +148,136 @@ export async function deleteCloudinaryImage(publicId: string | null | undefined)
   } catch (error) {
     console.error(
       "[cloudinary] delete failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Payment proofs: PRIVATE ("authenticated") assets. Never publicly reachable; admins view
+// them only through short-lived signed download URLs (see proofDownloadUrl).
+// ---------------------------------------------------------------------------------------
+
+export const PROOF_FORMATS = ["jpg", "jpeg", "png", "webp", "pdf"] as const;
+const PROOF_TYPE = "authenticated";
+
+export function proofUploadFolder(userId: string) {
+  return `${UPLOAD_FOLDER}/proofs/${userId}`;
+}
+
+/** Signs a direct browser upload of a payment proof into the user's private proof folder. */
+export function createProofUploadSignature(userId: string): ImageUploadSignature {
+  const { cloudName, apiKey, apiSecret } = getCloudinaryEnv();
+  const timestamp = Math.round(Date.now() / 1000);
+  const allowedFormats = PROOF_FORMATS.join(",");
+  const folder = proofUploadFolder(userId);
+  const signature = cloudinary.utils.api_sign_request(
+    { timestamp, folder, allowed_formats: allowedFormats, type: PROOF_TYPE },
+    apiSecret,
+  );
+  return {
+    cloudName,
+    apiKey,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    timestamp,
+    signature,
+    folder,
+    allowedFormats,
+    maxFileBytes: MAX_IMAGE_BYTES,
+    type: PROOF_TYPE,
+  };
+}
+
+export type VerifiedProof = { publicId: string; format: string; bytes: number };
+
+/**
+ * Checks an uploaded proof before it's attached to a payment: it must exist as a private
+ * asset in this user's proof folder, be jpg/png/webp/pdf and at most 5 MB. Anything else is
+ * deleted. Returns null if invalid.
+ */
+export async function verifyUploadedProof(
+  publicId: string,
+  userId: string,
+): Promise<VerifiedProof | null> {
+  if (!/^[\w\-/]+$/.test(publicId) || publicId.includes("..")) return null;
+  if (!publicId.startsWith(`${proofUploadFolder(userId)}/`)) return null;
+
+  const sdk = getCloudinary();
+  let resource;
+  try {
+    resource = await sdk.api.resource(publicId, { resource_type: "image", type: PROOF_TYPE });
+  } catch {
+    return null;
+  }
+  const formatOk = (PROOF_FORMATS as readonly string[]).includes(resource.format);
+  if (!formatOk || resource.bytes > MAX_IMAGE_BYTES) {
+    await deleteProof(publicId);
+    return null;
+  }
+  return { publicId: resource.public_id, format: resource.format, bytes: resource.bytes };
+}
+
+/**
+ * Moves a verified proof to a new random public ID. Cloudinary's upload response gave the
+ * uploader's browser a permanently signed URL for the original ID; renaming makes that URL
+ * stop working, and the new ID is never sent to any browser. From then on the file can only
+ * be viewed through proofDownloadUrl (admins, 5-minute links). Returns null on failure.
+ */
+export async function sealProof(
+  publicId: string,
+  userId: string,
+  label: string,
+): Promise<string | null> {
+  const safeLabel = label.replace(/[^A-Za-z0-9-]/g, "").slice(0, 20);
+  const target = `${proofUploadFolder(userId)}/${safeLabel}-${randomBytes(9).toString("hex")}`;
+  try {
+    const result = await getCloudinary().uploader.rename(publicId, target, {
+      resource_type: "image",
+      type: PROOF_TYPE,
+      to_type: PROOF_TYPE,
+      invalidate: true,
+    });
+    return result.public_id ?? target;
+  } catch (error) {
+    console.error(
+      "[cloudinary] proof seal failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    return null;
+  }
+}
+
+/** A download URL for a private proof, signed with the API secret and valid for a few minutes. */
+export function proofDownloadUrl(
+  publicId: string,
+  format: string,
+  {
+    expiresInSeconds = 300,
+    attachment = false,
+  }: { expiresInSeconds?: number; attachment?: boolean } = {},
+) {
+  getCloudinaryEnv();
+  return cloudinary.utils.private_download_url(publicId, format, {
+    resource_type: "image",
+    type: PROOF_TYPE,
+    expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
+    attachment,
+  });
+}
+
+export async function deleteProof(publicId: string | null | undefined) {
+  if (!publicId || !publicId.startsWith(`${UPLOAD_FOLDER}/proofs/`)) return false;
+  try {
+    const result = await getCloudinary().uploader.destroy(publicId, {
+      resource_type: "image",
+      type: PROOF_TYPE,
+      invalidate: true,
+    });
+    return result.result === "ok" || result.result === "not found";
+  } catch (error) {
+    console.error(
+      "[cloudinary] proof delete failed:",
       error instanceof Error ? error.message : "unknown error",
     );
     return false;

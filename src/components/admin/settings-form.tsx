@@ -9,41 +9,116 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input, Label } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export function SettingsForm({
-  paymentRequired,
-  listingFeeNaira,
-}: {
+export type SettingsValues = {
   paymentRequired: boolean;
   listingFeeNaira: number;
+  manualTransferEnabled: boolean;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+};
+
+function Switch({
+  checked,
+  onChange,
+  labelId,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  labelId: string;
 }) {
-  const [required, setRequired] = useState(paymentRequired);
-  const [fee, setFee] = useState(String(listingFeeNaira));
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={labelId}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors",
+        checked ? "bg-brand-600" : "bg-gray-400",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-block size-6 rounded-full bg-white shadow transition-transform",
+          checked ? "translate-x-7" : "translate-x-1",
+        )}
+      />
+      <span className="sr-only">{checked ? "On" : "Off"}</span>
+    </button>
+  );
+}
+
+export function SettingsForm({ initial }: { initial: SettingsValues }) {
+  const [values, setValues] = useState(initial);
+  const [fee, setFee] = useState(String(initial.listingFeeNaira));
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<AdminActionResult | null>(null);
   const [pending, startTransition] = useTransition();
-  const switchLabelId = useId();
-  const feeId = useId();
+  const ids = {
+    fee: useId(),
+    transfer: useId(),
+    feeSwitch: useId(),
+    bank: useId(),
+    number: useId(),
+    name: useId(),
+  };
+  const set = <K extends keyof SettingsValues>(key: K, value: SettingsValues[K]) =>
+    setValues((v) => ({ ...v, [key]: value }));
 
   const feeNumber = Number(fee);
   const feeValid = Number.isInteger(feeNumber) && feeNumber >= 100 && feeNumber <= 1_000_000;
-  const changed = required !== paymentRequired || feeNumber !== listingFeeNaira;
+  const accountDigits = values.bankAccountNumber.replace(/\s/g, "");
+  const accountValid = accountDigits === "" || /^\d{10}$/.test(accountDigits);
+  const transferUsable =
+    values.manualTransferEnabled &&
+    Boolean(values.bankName.trim() && values.bankAccountName.trim()) &&
+    /^\d{10}$/.test(accountDigits);
+  const ruleError =
+    values.manualTransferEnabled && !transferUsable
+      ? "To turn on bank transfer, fill in the bank name, a 10-digit account number and the account name."
+      : values.paymentRequired && !transferUsable
+        ? "The listing fee is on, so at least one payment method must be enabled. Turn on bank transfer with complete details, or turn the fee off."
+        : null;
+  const next = { ...values, listingFeeNaira: feeNumber, bankAccountNumber: accountDigits };
+  const changed = (Object.keys(initial) as (keyof SettingsValues)[]).some(
+    (k) => initial[k] !== next[k],
+  );
 
   const effects: string[] = [];
-  if (required !== paymentRequired) {
+  if (next.paymentRequired !== initial.paymentRequired) {
     effects.push(
-      required
-        ? `New submissions will need to pay ${formatNaira(feeValid ? feeNumber : listingFeeNaira)} before review. Listings already in review stay free.`
-        : "New submissions go straight to review for free. Owners currently awaiting payment can submit for review without paying.",
+      next.paymentRequired
+        ? `New submissions will need to pay ${formatNaira(feeValid ? feeNumber : initial.listingFeeNaira)} before review. Listings already in review stay free.`
+        : "New submissions go straight to review for free. Owners awaiting payment can submit without paying.",
     );
   }
-  if (feeNumber !== listingFeeNaira && feeValid) {
+  if (feeValid && feeNumber !== initial.listingFeeNaira) {
     effects.push(
-      `The fee changes from ${formatNaira(listingFeeNaira)} to ${formatNaira(feeNumber)} for payments made from now on. Businesses that already paid are never charged again.`,
+      `The fee changes from ${formatNaira(initial.listingFeeNaira)} to ${formatNaira(feeNumber)} for payments started from now on.`,
+    );
+  }
+  if (next.manualTransferEnabled !== initial.manualTransferEnabled) {
+    effects.push(
+      next.manualTransferEnabled
+        ? "Owners can pay by bank transfer."
+        : "Bank transfer is hidden from owners.",
+    );
+  }
+  if (
+    next.bankName !== initial.bankName ||
+    next.bankAccountNumber !== initial.bankAccountNumber ||
+    next.bankAccountName !== initial.bankAccountName
+  ) {
+    effects.push(
+      `Owners will be told to pay into: ${next.bankName}, ${next.bankAccountNumber}, ${next.bankAccountName}. Double-check these details.`,
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div aria-live="polite" className="empty:hidden">
         {result && (
           <FormAlert status={result.ok ? "success" : "error"}>
@@ -52,67 +127,114 @@ export function SettingsForm({
         )}
       </div>
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p id={switchLabelId} className="text-base font-semibold text-gray-900">
-            Require listing fee
-          </p>
-          <p className="mt-1 text-sm text-gray-700">
-            When on, new listings must pay before they go to the review queue.
+      <section aria-labelledby={ids.feeSwitch} className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p id={ids.feeSwitch} className="text-base font-semibold text-gray-900">
+              Require listing fee
+            </p>
+            <p className="mt-1 text-sm text-gray-700">
+              When on, new listings must pay before they go to the review queue.
+            </p>
+          </div>
+          <Switch
+            checked={values.paymentRequired}
+            onChange={(v) => set("paymentRequired", v)}
+            labelId={ids.feeSwitch}
+          />
+        </div>
+        <p className="text-sm font-medium text-gray-900">
+          Currently: {values.paymentRequired ? "On" : "Off"}
+        </p>
+        <div className="max-w-xs">
+          <Label htmlFor={ids.fee}>Listing fee (₦)</Label>
+          <Input
+            id={ids.fee}
+            type="number"
+            inputMode="numeric"
+            min={100}
+            max={1000000}
+            step={100}
+            value={fee}
+            onChange={(e) => setFee(e.target.value)}
+            aria-invalid={!feeValid || undefined}
+            aria-describedby={`${ids.fee}-hint`}
+          />
+          <p
+            id={`${ids.fee}-hint`}
+            className={cn("mt-1.5 text-sm", feeValid ? "text-gray-600" : "text-red-700")}
+          >
+            {feeValid
+              ? `Shown to owners as ${formatNaira(feeNumber)}.`
+              : "Enter a whole amount between ₦100 and ₦1,000,000."}
           </p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={required}
-          aria-labelledby={switchLabelId}
-          onClick={() => setRequired((value) => !value)}
-          className={cn(
-            "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors",
-            required ? "bg-brand-600" : "bg-gray-400",
-          )}
-        >
-          <span
-            aria-hidden="true"
-            className={cn(
-              "inline-block size-6 rounded-full bg-white shadow transition-transform",
-              required ? "translate-x-7" : "translate-x-1",
-            )}
-          />
-          <span className="sr-only">{required ? "On" : "Off"}</span>
-        </button>
-      </div>
-      <p className="-mt-3 text-sm font-medium text-gray-900">
-        Currently: {required ? "On" : "Off"}
-      </p>
+      </section>
 
-      <div className="max-w-xs">
-        <Label htmlFor={feeId}>Listing fee (₦)</Label>
-        <Input
-          id={feeId}
-          type="number"
-          inputMode="numeric"
-          min={100}
-          max={1000000}
-          step={100}
-          value={fee}
-          onChange={(event) => setFee(event.target.value)}
-          aria-invalid={!feeValid || undefined}
-          aria-describedby={`${feeId}-hint`}
-        />
-        <p
-          id={`${feeId}-hint`}
-          className={cn("mt-1.5 text-sm", feeValid ? "text-gray-600" : "text-red-700")}
-        >
-          {feeValid
-            ? `Shown to owners as ${formatNaira(feeNumber)}.`
-            : "Enter a whole amount between ₦100 and ₦1,000,000."}
-        </p>
-      </div>
+      <section aria-labelledby={ids.transfer} className="space-y-4 border-t border-border pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p id={ids.transfer} className="text-base font-semibold text-gray-900">
+              Bank transfer
+            </p>
+            <p className="mt-1 text-sm text-gray-700">
+              Owners transfer to this account and upload a receipt; you confirm each payment
+              manually.
+            </p>
+          </div>
+          <Switch
+            checked={values.manualTransferEnabled}
+            onChange={(v) => set("manualTransferEnabled", v)}
+            labelId={ids.transfer}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label htmlFor={ids.bank}>Bank name</Label>
+            <Input
+              id={ids.bank}
+              value={values.bankName}
+              maxLength={80}
+              onChange={(e) => set("bankName", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor={ids.number}>Account number</Label>
+            <Input
+              id={ids.number}
+              inputMode="numeric"
+              maxLength={12}
+              value={values.bankAccountNumber}
+              onChange={(e) => set("bankAccountNumber", e.target.value)}
+              aria-invalid={!accountValid || undefined}
+              aria-describedby={`${ids.number}-hint`}
+            />
+            <p
+              id={`${ids.number}-hint`}
+              className={cn("mt-1.5 text-sm", accountValid ? "text-gray-600" : "text-red-700")}
+            >
+              {accountValid
+                ? "10 digits (NUBAN)."
+                : "The account number must be exactly 10 digits."}
+            </p>
+          </div>
+          <div>
+            <Label htmlFor={ids.name}>Account name</Label>
+            <Input
+              id={ids.name}
+              value={values.bankAccountName}
+              maxLength={80}
+              onChange={(e) => set("bankAccountName", e.target.value)}
+            />
+          </div>
+        </div>
+      </section>
+
+      {ruleError && <FormAlert status="error">{ruleError}</FormAlert>}
 
       <Button
         size="lg"
-        disabled={!changed || !feeValid || pending}
+        disabled={!changed || !feeValid || !accountValid || pending}
         onClick={() => setConfirming(true)}
       >
         Save changes
@@ -133,12 +255,9 @@ export function SettingsForm({
         pending={pending}
         onConfirm={() =>
           startTransition(async () => {
-            const outcome = await updateSettingsAction({
-              paymentRequired: required,
-              listingFeeNaira: feeNumber,
-            });
+            const outcome = await updateSettingsAction(next);
             setResult(outcome);
-            if (outcome.ok) setConfirming(false);
+            setConfirming(false);
           })
         }
       />

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
+  Banknote,
   CircleAlert,
   ClipboardList,
   CreditCard,
@@ -14,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { getAdminOverview } from "@/lib/admin/queries";
+import { countTransfersToConfirm } from "@/lib/payments/queries";
 import { requireAdmin } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +25,7 @@ type Stat = { label: string; value: number; href?: string; icon: LucideIcon; urg
 
 async function Overview() {
   await requireAdmin();
-  const c = await getAdminOverview();
+  const [c, transfers] = await Promise.all([getAdminOverview(), countTransfersToConfirm()]);
   const stats: Stat[] = [
     {
       label: "In review",
@@ -31,6 +33,13 @@ async function Overview() {
       href: "/admin/listings?tab=review",
       icon: ClipboardList,
       urgent: c.review > 0,
+    },
+    {
+      label: "Transfers to confirm",
+      value: transfers,
+      href: "/admin/payments?tab=confirm",
+      icon: Banknote,
+      urgent: transfers > 0,
     },
     {
       label: "Edited, needs re-check",

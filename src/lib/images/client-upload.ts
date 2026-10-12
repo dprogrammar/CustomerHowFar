@@ -68,32 +68,40 @@ type Signature = {
   signature: string;
   folder: string;
   allowedFormats: string;
+  type?: string;
 };
 
-let cachedSignature: { value: Signature; fetchedAt: number } | null = null;
+/** Signing endpoints: public listing photos, or private payment proofs. */
+export type UploadKind = "photo" | "proof";
+const SIGN_ENDPOINTS: Record<UploadKind, string> = {
+  photo: "/api/uploads/sign",
+  proof: "/api/uploads/sign-proof",
+};
+
+const cachedSignatures = new Map<UploadKind, { value: Signature; fetchedAt: number }>();
 const SIGNATURE_REUSE_MS = 45 * 60 * 1000; // Signatures are valid for 60 minutes.
 
-async function getSignature(): Promise<Signature> {
-  if (cachedSignature && Date.now() - cachedSignature.fetchedAt < SIGNATURE_REUSE_MS) {
-    return cachedSignature.value;
-  }
-  const res = await fetch("/api/uploads/sign", { method: "POST" });
+async function getSignature(kind: UploadKind): Promise<Signature> {
+  const cached = cachedSignatures.get(kind);
+  if (cached && Date.now() - cached.fetchedAt < SIGNATURE_REUSE_MS) return cached.value;
+  const res = await fetch(SIGN_ENDPOINTS[kind], { method: "POST" });
   if (res.status === 401) throw new Error("Your session has expired. Please log in again.");
   if (!res.ok) throw new Error("Uploads are unavailable right now. Please try again shortly.");
   const value = (await res.json()) as Signature;
-  cachedSignature = { value, fetchedAt: Date.now() };
+  cachedSignatures.set(kind, { value, fetchedAt: Date.now() });
   return value;
 }
 
-export type UploadedImage = { publicId: string; width: number; height: number };
+export type UploadedImage = { publicId: string; width: number; height: number; format?: string };
 
 /** Uploads to Cloudinary with progress (0-100). XHR is used because fetch has no upload progress. */
 export async function uploadToCloudinary(
   blob: Blob,
   onProgress: (percent: number) => void,
   signal?: AbortSignal,
+  kind: UploadKind = "photo",
 ): Promise<UploadedImage> {
-  const sig = await getSignature();
+  const sig = await getSignature(kind);
   const form = new FormData();
   form.append("file", blob);
   form.append("api_key", sig.apiKey);
@@ -101,6 +109,7 @@ export async function uploadToCloudinary(
   form.append("signature", sig.signature);
   form.append("folder", sig.folder);
   form.append("allowed_formats", sig.allowedFormats);
+  if (sig.type) form.append("type", sig.type);
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -113,6 +122,7 @@ export async function uploadToCloudinary(
         public_id?: string;
         width?: number;
         height?: number;
+        format?: string;
         error?: { message?: string };
       };
       try {
@@ -121,9 +131,16 @@ export async function uploadToCloudinary(
         body = {};
       }
       if (xhr.status >= 200 && xhr.status < 300 && body.public_id) {
-        resolve({ publicId: body.public_id, width: body.width ?? 0, height: body.height ?? 0 });
+        resolve({
+          publicId: body.public_id,
+          width: body.width ?? 0,
+          height: body.height ?? 0,
+          format: body.format,
+        });
+      } else if (xhr.status === 400 && /format/i.test(body.error?.message ?? "")) {
+        reject(new Error("That file type isn't allowed. Please upload a JPG, PNG, WebP or PDF."));
       } else {
-        if (xhr.status === 401) cachedSignature = null; // Expired signature: refetch next time.
+        if (xhr.status === 401) cachedSignatures.delete(kind); // Expired signature: refetch next time.
         reject(new Error("Upload failed. Check your connection and try again."));
       }
     };

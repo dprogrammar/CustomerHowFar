@@ -6,6 +6,7 @@ import { getAdminBusiness } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/session";
 import { DAYS, formatNaira, type BusinessStatus, type OpeningHours } from "@/lib/business/rules";
 import { cloudinaryUrl } from "@/lib/images";
+import { PAYMENT_STATUS_LABELS } from "@/lib/payments/methods";
 import { ModerationPanel } from "@/components/admin/moderation-panel";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
@@ -264,8 +265,15 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
                   <li key={p.id} className="flex flex-wrap justify-between gap-2 py-2">
                     <span>
                       {formatNaira(p.amountKobo / 100)} ·{" "}
-                      <span className="font-medium">{p.status}</span>
-                      <span className="block text-xs text-gray-600">Ref {p.reference}</span>
+                      <span className="font-medium">
+                        {PAYMENT_STATUS_LABELS[p.status] ?? p.status}
+                      </span>
+                      <Link
+                        href={`/admin/payments/${p.id}`}
+                        className="block text-xs font-medium text-brand-700 underline"
+                      >
+                        Ref {p.reference} · view payment
+                      </Link>
                     </span>
                     <span className="text-gray-700">
                       {dateTime.format(p.paidAt ?? p.createdAt)}

@@ -173,3 +173,144 @@ export function adminSubmissionEmail(input: {
     text: `${kind} waiting for review: ${input.businessName}\n${input.categoryName} · ${input.location}\nOwner: ${input.ownerName} (${input.ownerEmail})\n\nReview: ${input.reviewUrl}`,
   };
 }
+
+// --- Payments ------------------------------------------------------------------------------
+
+function detailsTable(rows: [string, string][]) {
+  const cells = rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;width:40%">${escapeHtml(label)}</td><td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb">${cells}</table>`;
+}
+
+export function proofReceivedEmail(input: {
+  ownerName: string;
+  businessName: string;
+  amount: string;
+  reference: string;
+  dashboardUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `We received your payment proof (${input.reference})`,
+    html: layout({
+      preheader: "Your transfer proof is waiting for confirmation.",
+      heading: "Payment proof received",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `Thanks! We received your bank transfer proof for <strong>${escapeHtml(input.businessName)}</strong>. Our team will check that the money has arrived and confirm it, usually within 1 working day.`,
+        ) +
+        detailsTable([
+          ["Amount", input.amount],
+          ["Reference", input.reference],
+        ]) +
+        button("View my businesses", input.dashboardUrl),
+    }),
+    text: `Hi ${first},\n\nWe received your bank transfer proof for ${input.businessName}. We'll confirm it once the money has arrived, usually within 1 working day.\n\nAmount: ${input.amount}\nReference: ${input.reference}\n\n${input.dashboardUrl}${textFooter()}`,
+  };
+}
+
+export function adminTransferProofEmail(input: {
+  businessName: string;
+  ownerName: string;
+  ownerEmail: string;
+  amountDeclared: string;
+  fee: string;
+  reference: string;
+  senderName: string;
+  senderBank: string;
+  reviewUrl: string;
+}): RenderedEmail {
+  return {
+    subject: `[Payment] Transfer to confirm: ${input.reference} (${input.amountDeclared})`,
+    html: layout({
+      preheader: `${input.businessName} uploaded a transfer proof.`,
+      heading: "Bank transfer waiting for confirmation",
+      body:
+        detailsTable([
+          ["Business", input.businessName],
+          ["Owner", `${input.ownerName} (${input.ownerEmail})`],
+          ["Reference", input.reference],
+          ["Fee", input.fee],
+          ["Amount declared", input.amountDeclared],
+          ["Sender", `${input.senderName}, ${input.senderBank}`],
+        ]) +
+        paragraph(
+          "Check that the money is in the bank account before confirming. Receipts can be faked.",
+        ) +
+        button("Review the transfer", input.reviewUrl),
+    }),
+    text: `Transfer to confirm: ${input.reference}\nBusiness: ${input.businessName}\nOwner: ${input.ownerName} (${input.ownerEmail})\nFee: ${input.fee}\nDeclared: ${input.amountDeclared}\nSender: ${input.senderName}, ${input.senderBank}\n\nCheck the money is in the bank account before confirming.\n${input.reviewUrl}`,
+  };
+}
+
+export function paymentReceiptEmail(input: {
+  ownerName: string;
+  businessName: string;
+  amount: string;
+  method: string;
+  reference: string;
+  paidOn: string;
+  dashboardUrl: string;
+  approved: boolean;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  const next = input.approved
+    ? "Your listing has also been approved and is now live."
+    : "Your listing is now in our review queue. We'll email you when it's live.";
+  return {
+    subject: `Payment receipt: ${input.reference}`,
+    html: layout({
+      preheader: `Payment of ${input.amount} confirmed.`,
+      heading: "Payment confirmed",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `Thank you. Your listing fee payment for <strong>${escapeHtml(input.businessName)}</strong> is confirmed.`,
+        ) +
+        detailsTable([
+          ["Business", input.businessName],
+          ["Amount", input.amount],
+          ["Method", input.method],
+          ["Reference", input.reference],
+          ["Date", input.paidOn],
+        ]) +
+        paragraph(escapeHtml(next)) +
+        button("View my businesses", input.dashboardUrl) +
+        paragraph("Keep this email as your receipt. You won't be charged again for this listing."),
+    }),
+    text: `Hi ${first},\n\nYour listing fee payment for ${input.businessName} is confirmed.\n\nAmount: ${input.amount}\nMethod: ${input.method}\nReference: ${input.reference}\nDate: ${input.paidOn}\n\n${next}\n\nKeep this email as your receipt.${textFooter()}`,
+  };
+}
+
+export function proofRejectedEmail(input: {
+  ownerName: string;
+  businessName: string;
+  reference: string;
+  reason: string;
+  payUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `We couldn't confirm your payment (${input.reference})`,
+    html: layout({
+      preheader: "Please check your transfer and upload a new proof.",
+      heading: "We couldn't confirm your payment",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `We checked your transfer proof for <strong>${escapeHtml(input.businessName)}</strong> (reference ${escapeHtml(input.reference)}) but couldn't confirm the payment:`,
+        ) +
+        quote(input.reason) +
+        button("Upload a new proof", input.payUrl) +
+        paragraph(
+          "If you believe the money was sent, reply to this email with your transfer details.",
+        ),
+    }),
+    text: `Hi ${first},\n\nWe couldn't confirm your transfer for ${input.businessName} (reference ${input.reference}):\n\n${input.reason}\n\nUpload a new proof: ${input.payUrl}${textFooter()}`,
+  };
+}

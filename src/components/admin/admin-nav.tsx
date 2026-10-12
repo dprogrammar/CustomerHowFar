@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  Banknote,
   ClipboardList,
   LayoutDashboard,
   ListChecks,
@@ -31,6 +32,12 @@ const ITEMS: {
     match: (p, tab) =>
       p.startsWith("/admin/listings") &&
       !(p === "/admin/listings" && (tab === null || tab === "review")),
+  },
+  {
+    label: "Payments",
+    href: "/admin/payments",
+    icon: Banknote,
+    match: (p) => p.startsWith("/admin/payments"),
   },
   {
     label: "Settings",

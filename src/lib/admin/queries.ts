@@ -159,6 +159,10 @@ export async function getSettingsWithHistory() {
   return {
     paymentRequired: settings?.paymentRequired ?? false,
     listingFeeNaira: settings?.listingFeeNaira ?? 5000,
+    manualTransferEnabled: settings?.manualTransferEnabled ?? false,
+    bankName: settings?.bankName ?? "",
+    bankAccountNumber: settings?.bankAccountNumber ?? "",
+    bankAccountName: settings?.bankAccountName ?? "",
     updatedAt: settings?.updatedAt ?? null,
     history,
   };

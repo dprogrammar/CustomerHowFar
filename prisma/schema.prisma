@@ -19,12 +19,19 @@ datasource db {
 
 /// Global, admin-controlled settings. Holds a single row (id = 1).
 model AppSetting {
-  id              Int      @id @default(1)
+  id                    Int      @id @default(1)
   /// Admin switch: when true, businesses must pay the listing fee to publish a listing.
-  paymentRequired Boolean  @default(false) @map("payment_required")
+  paymentRequired       Boolean  @default(false) @map("payment_required")
   /// Listing fee in whole Naira.
-  listingFeeNaira Int      @default(5000) @map("listing_fee_naira")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  listingFeeNaira       Int      @default(5000) @map("listing_fee_naira")
+  /// Payment method: direct bank transfer with proof upload, confirmed manually by an admin.
+  manualTransferEnabled Boolean  @default(false) @map("manual_transfer_enabled")
+  /// Bank account shown to owners paying by transfer. Set by an admin (seeded once).
+  bankName              String?  @map("bank_name")
+  /// Exactly 10 digits (NUBAN).
+  bankAccountNumber     String?  @map("bank_account_number") @db.VarChar(10)
+  bankAccountName       String?  @map("bank_account_name")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
 }
@@ -50,7 +57,9 @@ model Profile {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   businesses          Business[]
-  payments            Payment[]
+  payments            Payment[]            @relation("PaymentUser")
+  /// Payments this user confirmed or rejected as an admin.
+  reviewedPayments    Payment[]            @relation("PaymentReviewer")
   reviews             Review[]
   savedBusinesses     SavedBusiness[]
   contactEvents       ContactEvent[]
@@ -253,8 +262,12 @@ model BusinessPhoto {
   @@map("business_photos")
 }
 
+/// PENDING: started, nothing reported yet. AWAITING_CONFIRMATION: bank transfer proof uploaded,
+/// waiting for an admin. SUCCESS: money confirmed. FAILED: provider failure or proof rejected
+/// (see rejectionReason). ABANDONED: cancelled.
 enum PaymentStatus {
   PENDING
+  AWAITING_CONFIRMATION
   SUCCESS
   FAILED
   ABANDONED
@@ -262,8 +275,10 @@ enum PaymentStatus {
   @@map("payment_status")
 }
 
+/// Payment method. Code for each lives in src/lib/payments/methods.
 enum PaymentProvider {
   PAYSTACK
+  MANUAL_TRANSFER
 
   @@map("payment_provider")
 }
@@ -289,15 +304,39 @@ model Payment {
   status     PaymentStatus   @default(PENDING)
   paidAt     DateTime?       @map("paid_at")
   metadata   Json?
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  user     Profile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  // --- Manual bank transfer details (provider MANUAL_TRANSFER) ---
+  /// Name on the account the owner sent the money from.
+  senderName       String?   @map("sender_name")
+  senderBank       String?   @map("sender_bank")
+  /// What the owner says they sent, in kobo. Must be at least amountKobo to confirm.
+  amountSentKobo   Int?      @map("amount_sent_kobo")
+  transferDate     DateTime? @map("transfer_date") @db.Date
+  /// Cloudinary public ID of the proof file. Stored as an AUTHENTICATED (private) asset;
+  /// only admins can view it through short-lived signed URLs.
+  proofPublicId    String?   @unique @map("proof_public_id")
+  /// "pdf", "jpg", "png" or "webp".
+  proofFormat      String?   @map("proof_format")
+  proofSubmittedAt DateTime? @map("proof_submitted_at")
+  /// Shown to the owner when an admin rejects a proof (status FAILED).
+  rejectionReason  String?   @map("rejection_reason")
+  /// Admin who confirmed or rejected the payment, and when.
+  reviewedById     String?   @map("reviewed_by_id") @db.Uuid
+  reviewedAt       DateTime? @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user       Profile  @relation("PaymentUser", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy Profile? @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([businessId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
+  /// Admin queue of transfers to confirm (oldest first).
+  @@index([status, proofSubmittedAt])
+  @@index([reviewedById])
   @@map("payments")
 }
 

@@ -49,6 +49,26 @@ policies, so the public Supabase Data API cannot read or write anything.
   also returns a real 404 for `/admin` unless the login token's `app_metadata.role` is
   `admin` (set by `npm run make-admin`).
 
+### Payments (bank transfer)
+
+- Methods live in `src/lib/payments/methods.ts`; `PaymentProvider` has `MANUAL_TRANSFER` (and
+  `PAYSTACK`, reserved). A method is offered only when switched on AND fully configured in
+  `AppSetting` (`manualTransferEnabled` + bank name, 10-digit account number, account name).
+  Settings refuse to save "fee on" without an available method.
+- Flow: owner starts a transfer → `Payment` `PENDING` with a reference like `CHF-7K3P9Q` and the
+  fee in kobo → uploads a proof → `AWAITING_CONFIRMATION` (at most one per business, enforced by
+  a partial unique index) → admin confirms (`SUCCESS`) or rejects (`FAILED` + `rejectionReason`).
+  Owners can withdraw an unreviewed proof (back to `PENDING`, same reference).
+- Proof files are private Cloudinary assets (`type: authenticated`) under
+  `customerhowfar/proofs/<userId>/`. After verification the server renames each proof to a random
+  id, so the signed URL the uploader's browser received stops working. Admins view proofs only
+  through `/admin/payments/[id]/proof`, which redirects to a 5-minute signed download URL.
+- `settlePaymentInTx()` (`src/lib/payments/settle.ts`) is the single, idempotent way to mark any
+  payment successful: it requires the declared amount to cover the recorded fee, marks
+  `SUCCESS`, and moves the business `PENDING_PAYMENT` → `PENDING_REVIEW` (never to `APPROVED`).
+  "Confirm payment and approve listing" runs settlement and `approveBusinessInTx()` (all approval
+  rules, including payment fairness) in one transaction.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

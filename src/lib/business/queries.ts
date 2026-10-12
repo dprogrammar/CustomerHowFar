@@ -82,6 +82,12 @@ export async function getOwnerDashboard(userId: string) {
         take: 1,
         select: { comment: true },
       },
+      payments: {
+        where: { status: { not: "ABANDONED" } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { reference: true, status: true, amountKobo: true, rejectionReason: true },
+      },
     },
   });
 
@@ -90,6 +96,7 @@ export async function getOwnerDashboard(userId: string) {
     status: b.status as BusinessStatus,
     completeness: getCompleteness({ ...b, workPhotoCount: b._count.photos }),
     adminComment: b.moderationDecisions[0]?.comment ?? b.rejectionReason ?? null,
+    latestPayment: b.payments[0] ?? null,
   }));
 }
 

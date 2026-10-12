@@ -2,8 +2,13 @@ import "server-only";
 import { getSiteUrl } from "@/config/site";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "./send";
+import { METHOD_LABELS, formatKobo } from "@/lib/payments/methods";
 import {
   adminSubmissionEmail,
+  adminTransferProofEmail,
+  paymentReceiptEmail,
+  proofReceivedEmail,
+  proofRejectedEmail,
   changesRequestedEmail,
   listingApprovedEmail,
   listingSuspendedEmail,
@@ -107,6 +112,106 @@ export function notifyAdminOfSubmission(businessId: string, resubmission: boolea
         ownerEmail: b.owner.email,
         resubmission,
         reviewUrl: `${getSiteUrl()}/admin/listings/${b.id}`,
+      }),
+    });
+  });
+}
+
+// --- Payments ------------------------------------------------------------------------------
+
+async function loadPayment(paymentId: string) {
+  return prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      business: { select: { id: true, name: true, status: true } },
+      user: { select: { fullName: true, email: true } },
+    },
+  });
+}
+
+const dateFmt = new Intl.DateTimeFormat("en-NG", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Africa/Lagos",
+});
+
+export function notifyProofReceived(paymentId: string) {
+  return safely("proof-received", async () => {
+    const p = await loadPayment(paymentId);
+    if (!p) return;
+    await sendEmail({
+      to: { email: p.user.email, name: p.user.fullName },
+      tag: "proof-received",
+      ...proofReceivedEmail({
+        ownerName: p.user.fullName,
+        businessName: p.business.name,
+        amount: formatKobo(p.amountKobo),
+        reference: p.reference,
+        dashboardUrl: `${getSiteUrl()}/dashboard`,
+      }),
+    });
+  });
+}
+
+export function notifyAdminOfTransferProof(paymentId: string) {
+  return safely("admin-transfer-proof", async () => {
+    const to = process.env.ADMIN_NOTIFY_EMAIL;
+    if (!to) return;
+    const p = await loadPayment(paymentId);
+    if (!p) return;
+    await sendEmail({
+      to: { email: to },
+      tag: "admin-transfer-proof",
+      ...adminTransferProofEmail({
+        businessName: p.business.name,
+        ownerName: p.user.fullName,
+        ownerEmail: p.user.email,
+        amountDeclared: formatKobo(p.amountSentKobo ?? 0),
+        fee: formatKobo(p.amountKobo),
+        reference: p.reference,
+        senderName: p.senderName ?? "",
+        senderBank: p.senderBank ?? "",
+        reviewUrl: `${getSiteUrl()}/admin/payments/${p.id}`,
+      }),
+    });
+  });
+}
+
+export function notifyPaymentReceipt(paymentId: string) {
+  return safely("payment-receipt", async () => {
+    const p = await loadPayment(paymentId);
+    if (!p || p.status !== "SUCCESS") return;
+    await sendEmail({
+      to: { email: p.user.email, name: p.user.fullName },
+      tag: "payment-receipt",
+      ...paymentReceiptEmail({
+        ownerName: p.user.fullName,
+        businessName: p.business.name,
+        amount: formatKobo(p.amountKobo),
+        method: METHOD_LABELS[p.provider] ?? p.provider,
+        reference: p.reference,
+        paidOn: dateFmt.format(p.paidAt ?? new Date()),
+        dashboardUrl: `${getSiteUrl()}/dashboard`,
+        approved: p.business.status === "APPROVED",
+      }),
+    });
+  });
+}
+
+export function notifyProofRejected(paymentId: string) {
+  return safely("proof-rejected", async () => {
+    const p = await loadPayment(paymentId);
+    if (!p || !p.rejectionReason) return;
+    await sendEmail({
+      to: { email: p.user.email, name: p.user.fullName },
+      tag: "proof-rejected",
+      ...proofRejectedEmail({
+        ownerName: p.user.fullName,
+        businessName: p.business.name,
+        reference: p.reference,
+        reason: p.rejectionReason,
+        payUrl: `${getSiteUrl()}/business/${p.business.id}/pay`,
       }),
     });
   });

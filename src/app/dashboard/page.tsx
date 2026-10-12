@@ -1,7 +1,16 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CircleAlert, CreditCard, Eye, Pencil, Plus, ShieldAlert, Store } from "lucide-react";
+import {
+  Banknote,
+  CircleAlert,
+  CreditCard,
+  Eye,
+  Pencil,
+  Plus,
+  ShieldAlert,
+  Store,
+} from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { getOwnerDashboard } from "@/lib/business/queries";
 import {
@@ -9,6 +18,7 @@ import {
   firstIncompleteStep,
   type BusinessStatus,
 } from "@/lib/business/rules";
+import { formatKobo } from "@/lib/payments/methods";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { buttonVariants } from "@/components/ui/button";
@@ -39,6 +49,41 @@ function primaryAction(
     default:
       return null;
   }
+}
+
+/** Payment status and reference on the owner's card (with the reason if a proof was rejected). */
+function PaymentSummary({ payment }: { payment: NonNullable<DashboardBusiness["latestPayment"]> }) {
+  const tone =
+    payment.status === "SUCCESS"
+      ? "text-brand-800"
+      : payment.status === "FAILED"
+        ? "text-red-800"
+        : payment.status === "AWAITING_CONFIRMATION"
+          ? "text-blue-900"
+          : "text-gray-800";
+  const label =
+    payment.status === "AWAITING_CONFIRMATION"
+      ? "Payment proof submitted, awaiting confirmation"
+      : payment.status === "SUCCESS"
+        ? `Paid ${formatKobo(payment.amountKobo)}`
+        : payment.status === "FAILED"
+          ? "Payment proof not accepted"
+          : "Payment started, waiting for your transfer";
+  return (
+    <div className="mt-3 rounded-lg bg-muted p-3 text-sm">
+      <p className={`flex flex-wrap items-center gap-x-2 font-medium ${tone}`}>
+        <Banknote aria-hidden="true" className="size-4 shrink-0" />
+        {label}
+        <span className="font-mono text-xs text-gray-700">Ref {payment.reference}</span>
+      </p>
+      {payment.status === "FAILED" && payment.rejectionReason && (
+        <p className="mt-1 text-red-900">
+          <strong className="font-semibold">Reason:</strong> {payment.rejectionReason} Please upload
+          a new proof.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function BusinessCardRow({ b }: { b: DashboardBusiness }) {
@@ -112,6 +157,7 @@ function BusinessCardRow({ b }: { b: DashboardBusiness }) {
               Our team is reviewing your listing. We&apos;ll email you.
             </p>
           )}
+          {b.latestPayment && <PaymentSummary payment={b.latestPayment} />}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {action && (

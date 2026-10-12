@@ -33,6 +33,7 @@ export function StepBasics({
     tagline: string | null;
     phone: string;
     whatsappNumber: string;
+    email: string | null;
   };
 }) {
   const [state, formAction, pending] = useActionState(
@@ -132,6 +133,19 @@ export function StepBasics({
           />
         )}
       </div>
+
+      <TextField
+        label="Business email (optional)"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoCapitalize="none"
+        placeholder="hello@yourbusiness.com"
+        defaultValue={v?.email ?? defaults?.email ?? ""}
+        errors={errors?.email}
+        hint="Shown on your listing as an Email button. Leave empty if you prefer WhatsApp and calls."
+      />
 
       <WizardNav pending={pending} />
     </form>

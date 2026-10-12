@@ -146,6 +146,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
           tagline: business.tagline,
           phone: business.phone,
           whatsappNumber: business.whatsappNumber,
+          email: business.email,
         }}
       />
     );
