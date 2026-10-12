@@ -33,7 +33,7 @@ export function TrustSection() {
           title="Hire with confidence"
           align="center"
         />
-        <ul className="grid gap-4 sm:gap-6 md:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
           {POINTS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex gap-4 md:flex-col md:items-center md:text-center">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-700 ring-1 ring-accent-200">

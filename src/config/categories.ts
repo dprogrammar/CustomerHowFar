@@ -6,7 +6,7 @@ import type { CategoryIconName } from "./category-icons";
  * until an admin screen exists.
  */
 export type CategorySeed = {
-  /** URL-safe identifier, used in /categories/[slug] and search filters. Never change once live. */
+  /** URL-safe identifier, used in /category/[slug] and search filters. Never change once live. */
   slug: string;
   name: string;
   /** Short description for category cards and SEO. */

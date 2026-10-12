@@ -15,7 +15,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-gray-950 text-gray-300">
       <Container className="py-12">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_2fr]">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_2fr]">
           <div className="max-w-sm">
             <Logo inverse />
             <p className="mt-4 text-sm leading-6 text-gray-400">{siteConfig.description}</p>
@@ -30,6 +30,7 @@ export function SiteFooter() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
+                        prefetch={false}
                         className="inline-block rounded py-1.5 text-sm text-gray-400 hover:text-white"
                       >
                         {link.label}

@@ -67,7 +67,7 @@ export async function getLgasByStateSlug(stateSlug: string): Promise<LgaListItem
  * gzipped, cheaper on slow networks than a round trip every time the state changes).
  */
 export async function getLgasGroupedByState(): Promise<
-  Record<number, { id: number; name: string }[]>
+  Record<number, { id: number; name: string; slug: string }[]>
 > {
   "use cache";
   cacheLife("weeks");
@@ -75,9 +75,22 @@ export async function getLgasGroupedByState(): Promise<
 
   const lgas = await prisma.lga.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true, stateId: true },
+    select: { id: true, name: true, slug: true, stateId: true },
   });
-  const grouped: Record<number, { id: number; name: string }[]> = {};
-  for (const { stateId, id, name } of lgas) (grouped[stateId] ??= []).push({ id, name });
+  const grouped: Record<number, { id: number; name: string; slug: string }[]> = {};
+  for (const { stateId, id, name, slug } of lgas)
+    (grouped[stateId] ??= []).push({ id, name, slug });
   return grouped;
+}
+
+/** Resolves state and LGA slugs (for search filters and SEO pages). Unknown slugs -> null. */
+export async function resolveLocation(stateSlug?: string, lgaSlug?: string) {
+  const states = await getStates();
+  const state = stateSlug ? (states.find((s) => s.slug === stateSlug) ?? null) : null;
+  let lga: { id: number; name: string; slug: string } | null = null;
+  if (state && lgaSlug) {
+    const grouped = await getLgasGroupedByState();
+    lga = grouped[state.id]?.find((l) => l.slug === lgaSlug) ?? null;
+  }
+  return { state, lga };
 }

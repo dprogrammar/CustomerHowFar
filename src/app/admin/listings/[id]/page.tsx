@@ -55,7 +55,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-0.5 py-2 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
+    <div className="grid grid-cols-1 gap-0.5 py-2 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
       <dt className="text-sm text-gray-600">{label}</dt>
       <dd className="text-sm break-words text-gray-900">
         {children ?? <span className="text-gray-500">Not provided</span>}
@@ -103,9 +103,16 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
         {b.needsRecheck && <Badge variant="accent">Edited since approval</Badge>}
         {b.isVerified && <Badge variant="verified">Verified</Badge>}
         {b.isFeatured && <Badge variant="accent">Featured</Badge>}
+        <Link
+          href={`/business/${b.slug}`}
+          className="ml-auto inline-flex items-center gap-1.5 rounded text-sm font-semibold text-brand-700 underline underline-offset-2"
+        >
+          <ExternalLink aria-hidden="true" className="size-4" />
+          {status === "APPROVED" ? "View public page" : "Preview listing page"}
+        </Link>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="order-2 space-y-5 xl:order-1">
           {duplicates.length > 0 && (
             <div

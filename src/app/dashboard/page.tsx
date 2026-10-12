@@ -45,9 +45,8 @@ function BusinessCardRow({ b }: { b: DashboardBusiness }) {
   const image = b.coverPublicId ?? b.photos[0]?.publicId ?? b.logoPublicId;
   const action = primaryAction(b);
   const editable = b.status !== "SUSPENDED";
-  // Live listings link to their public page; everything else to the preview step.
-  const viewHref =
-    b.status === "APPROVED" ? `/business/${b.slug}` : `/business/${b.id}/edit?step=5`;
+  // Same URL for everyone; owners see a preview banner while the listing isn't live.
+  const viewHref = `/business/${b.slug}`;
 
   return (
     <li className="overflow-hidden rounded-2xl border border-border bg-white shadow-card">

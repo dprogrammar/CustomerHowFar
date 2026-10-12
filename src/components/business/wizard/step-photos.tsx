@@ -197,7 +197,7 @@ export function StepPhotos({
 
       {message && <FormAlert status={message.tone}>{message.text}</FormAlert>}
 
-      <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <BrandSlot
           title="Logo"
           hint="Square works best."
@@ -244,7 +244,7 @@ export function StepPhotos({
           />
         </div>
 
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {photos.map((photo, index) => (
             <li
               key={photo.id}

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ChevronRight, LogOut, Menu, ShieldCheck, Store, UserRound, X } from "lucide-react";
+import { ChevronRight, Heart, LogOut, Menu, ShieldCheck, Store, UserRound, X } from "lucide-react";
 import { MAIN_NAV, ROUTES } from "@/config/navigation";
 import { logoutAction } from "@/lib/auth/actions";
 import { buttonVariants } from "@/components/ui/button";
@@ -96,6 +96,12 @@ export function MobileMenu({
                     <Link href={ROUTES.dashboard} onClick={close} className={itemClass}>
                       <Store aria-hidden="true" className="size-5 text-gray-500" />
                       My businesses
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href={ROUTES.saved} onClick={close} className={itemClass}>
+                      <Heart aria-hidden="true" className="size-5 text-gray-500" />
+                      Saved businesses
                     </Link>
                   </li>
                   {account.isAdmin && (

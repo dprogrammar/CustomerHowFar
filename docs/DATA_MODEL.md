@@ -49,6 +49,18 @@ policies, so the public Supabase Data API cannot read or write anything.
   also returns a real 404 for `/admin` unless the login token's `app_metadata.role` is
   `admin` (set by `npm run make-admin`).
 
+### Search
+
+- `businesses.search_text` (name, category, tagline, services, lowercased) and
+  `businesses.search_vector` (weighted full-text vector, description included) are maintained by
+  database triggers, never by app code. Renaming a category re-indexes its businesses.
+- Indexes: GIN on `search_vector` (full-text) and GIN `gin_trgm_ops` on `search_text` (typo
+  tolerance via the `pg_trgm` extension in the `extensions` schema).
+- Queries live in `src/lib/business/public.ts`: prefix full-text match OR trigram word similarity
+  (≥ 0.45), ranked by relevance plus a boost for featured/verified listings.
+- `viewCount` and `contactClickCount` are incremented with raw SQL from `/api/track`, so they never
+  change `updated_at`.
+
 ### Onboarding fields on `Business`
 
 - `submittedAt`: last time the owner sent the listing for review; the admin queue is ordered by it.

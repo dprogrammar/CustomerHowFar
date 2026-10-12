@@ -31,7 +31,7 @@ export function HowItWorks() {
           align="center"
         />
 
-        <ol className="grid gap-4 sm:gap-6 md:grid-cols-3">
+        <ol className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
           {STEPS.map(({ title, description, icon: Icon }, index) => (
             <li
               key={title}

@@ -87,3 +87,9 @@
     }
   }
 }
+
+/* Business pages show their own sticky contact bar on phones instead of the bottom nav.
+   (The bottom nav is already hidden from tablet width up.) */
+body.has-contact-bar nav[aria-label="Bottom navigation"] {
+  display: none;
+}

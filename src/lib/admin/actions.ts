@@ -10,6 +10,7 @@ import {
   notifyListingApproved,
   notifyListingSuspended,
 } from "@/lib/email/notifications";
+import { revalidatePublicBusiness } from "@/lib/business/revalidate";
 import { prisma } from "@/lib/prisma";
 
 // Every action: requireAdmin() first (404 for anyone else), validate with zod, then change the
@@ -57,12 +58,12 @@ async function moderate(
   if (!allowedFrom.includes(input.expectedStatus)) {
     throw new RuleError("That action isn't available for this listing's status.");
   }
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     // Lock the row so two admins (or the owner) can't interleave changes.
     await tx.$queryRaw`SELECT id FROM businesses WHERE id = ${input.businessId}::uuid FOR UPDATE`;
     const current = await tx.business.findUnique({
       where: { id: input.businessId },
-      select: { status: true, publishedAt: true, feeRequiredAtSubmit: true },
+      select: { status: true, publishedAt: true, feeRequiredAtSubmit: true, slug: true },
     });
     if (!current || current.status !== input.expectedStatus) throw new StaleError();
 
@@ -75,7 +76,13 @@ async function moderate(
     await tx.moderationDecision.create({
       data: { businessId: input.businessId, adminId, action, comment },
     });
+    return current.slug;
   });
+}
+
+async function revalidateById(businessId: string) {
+  const b = await prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
+  if (b) revalidatePublicBusiness(b.slug);
 }
 
 function fail(error: unknown): AdminActionResult {
@@ -94,8 +101,9 @@ export async function approveListingAction(
   const admin = await requireAdmin();
   const parsed = base.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
+  let slug: string;
   try {
-    await moderate(
+    slug = await moderate(
       admin.id,
       parsed.data,
       ["PENDING_REVIEW"],
@@ -125,6 +133,7 @@ export async function approveListingAction(
     return fail(error);
   }
   after(() => notifyListingApproved(parsed.data.businessId));
+  revalidatePublicBusiness(slug);
   refresh();
   return { ok: true, message: "Approved. The listing is live and the owner has been emailed." };
 }
@@ -138,8 +147,9 @@ export async function requestChangesAction(
   const parsed = rejectSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const { comment } = parsed.data;
+  let slug: string;
   try {
-    await moderate(
+    slug = await moderate(
       admin.id,
       parsed.data,
       ["PENDING_REVIEW", "APPROVED"],
@@ -155,6 +165,7 @@ export async function requestChangesAction(
     return fail(error);
   }
   after(() => notifyChangesRequested(parsed.data.businessId, comment));
+  revalidatePublicBusiness(slug);
   refresh();
   return { ok: true, message: "Changes requested. The owner has been emailed your note." };
 }
@@ -168,8 +179,9 @@ export async function suspendListingAction(
   const parsed = suspendSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   const { comment } = parsed.data;
+  let slug: string;
   try {
-    await moderate(
+    slug = await moderate(
       admin.id,
       parsed.data,
       ["APPROVED", "PENDING_REVIEW", "PENDING_PAYMENT", "REJECTED"],
@@ -181,6 +193,7 @@ export async function suspendListingAction(
     return fail(error);
   }
   after(() => notifyListingSuspended(parsed.data.businessId, comment));
+  revalidatePublicBusiness(slug);
   refresh();
   return { ok: true, message: "Suspended. The listing is hidden and the owner has been emailed." };
 }
@@ -192,8 +205,9 @@ export async function reinstateListingAction(
   const parsed = base.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   let wentLive = false;
+  let slug: string;
   try {
-    await moderate(admin.id, parsed.data, ["SUSPENDED"], "REINSTATED", null, (current) => {
+    slug = await moderate(admin.id, parsed.data, ["SUSPENDED"], "REINSTATED", null, (current) => {
       // Previously live listings go back live; never-approved ones go back to review.
       wentLive = current.publishedAt !== null;
       return wentLive
@@ -203,6 +217,7 @@ export async function reinstateListingAction(
   } catch (error) {
     return fail(error);
   }
+  revalidatePublicBusiness(slug);
   refresh();
   return {
     ok: true,
@@ -229,6 +244,7 @@ export async function markRecheckedAction(input: z.input<typeof base>): Promise<
     return true;
   });
   if (!done) return { ok: false, error: STALE };
+  await revalidateById(businessId);
   refresh();
   return { ok: true, message: "Marked as re-checked." };
 }
@@ -261,6 +277,7 @@ export async function setListingFlagAction(
     return true;
   });
   if (!changed) return { ok: false, error: STALE };
+  await revalidateById(businessId);
   refresh();
   const label = flag === "verified" ? "Verified badge" : "Featured";
   return { ok: true, message: `${label} ${value ? "on" : "off"}.` };

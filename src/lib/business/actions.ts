@@ -36,6 +36,7 @@ import {
   statusAfterSubmit,
   type BusinessStatus,
 } from "./rules";
+import { revalidatePublicBusiness } from "./revalidate";
 import { uniqueBusinessSlug } from "./slug";
 
 // ---------------------------------------------------------------------------------------
@@ -67,6 +68,11 @@ function text(formData: FormData, key: string) {
 
 function stepUrl(businessId: string, step: number) {
   return `/business/${businessId}/edit?step=${step}`;
+}
+
+/** After an owner edits a live listing, refresh its public pages (after the DB write). */
+function afterLiveEdit(business: { status: BusinessStatus; slug: string }) {
+  if (business.status === "APPROVED") revalidatePublicBusiness(business.slug);
 }
 
 /** Edits to a live listing keep it live but flag it for an admin to look at again. */
@@ -157,6 +163,7 @@ export async function saveBasicsAction(
     where: { id: business.id },
     data: { ...data, ...(slug ? { slug } : {}), ...recheckIfLive(business.status) },
   });
+  afterLiveEdit(business);
   redirect(stepUrl(business.id, 2));
 }
 
@@ -239,6 +246,7 @@ export async function saveLocationAction(
     where: { id: loaded.business.id },
     data: { ...parsed.data, ...recheckIfLive(loaded.business.status) },
   });
+  afterLiveEdit(loaded.business);
   redirect(stepUrl(loaded.business.id, 3));
 }
 
@@ -296,6 +304,7 @@ export async function saveAboutAction(
       ...recheckIfLive(loaded.business.status),
     },
   });
+  afterLiveEdit(loaded.business);
   redirect(stepUrl(loaded.business.id, 4));
 }
 
@@ -346,6 +355,7 @@ export async function addPhotoAction(
       where: { id: businessId },
       data: { [field]: verified.publicId, ...recheckIfLive(loaded.business.status) },
     });
+    afterLiveEdit(loaded.business);
     if (previous && previous !== verified.publicId) await deleteCloudinaryImage(previous);
     return { ok: true, data: { kind, publicId: verified.publicId } };
   }
@@ -383,6 +393,7 @@ export async function addPhotoAction(
       }
       return created;
     });
+    afterLiveEdit(loaded.business);
     return { ok: true, data: { kind: "work", photo } };
   } catch (error) {
     if (error instanceof PhotoLimitError) {
@@ -420,6 +431,7 @@ export async function removePhotoAction(
       data: recheckIfLive(loaded.business.status),
     }),
   ]);
+  afterLiveEdit(loaded.business);
   await deleteCloudinaryImage(photo.publicId);
   return { ok: true, data: undefined };
 }
@@ -440,6 +452,7 @@ export async function removeBrandImageAction(
     where: { id: loaded.business.id },
     data: { [field]: null, ...recheckIfLive(loaded.business.status) },
   });
+  afterLiveEdit(loaded.business);
   await deleteCloudinaryImage(previous);
   return { ok: true, data: undefined };
 }
@@ -467,6 +480,7 @@ export async function updatePhotoCaptionAction(
       data: { needsRecheck: true },
     });
   }
+  afterLiveEdit(loaded.business);
   return { ok: true, data: undefined };
 }
 
@@ -513,6 +527,7 @@ export async function movePhotoAction(
       },
     });
   });
+  afterLiveEdit(loaded.business);
   return { ok: true, data: photos };
 }
 
