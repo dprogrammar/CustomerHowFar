@@ -56,17 +56,21 @@ model Profile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  businesses          Business[]
-  payments            Payment[]            @relation("PaymentUser")
+  businesses            Business[]
+  payments              Payment[]              @relation("PaymentUser")
   /// Payments this user confirmed or rejected as an admin.
-  reviewedPayments    Payment[]            @relation("PaymentReviewer")
-  reviews             Review[]
-  savedBusinesses     SavedBusiness[]
-  contactEvents       ContactEvent[]
+  reviewedPayments      Payment[]              @relation("PaymentReviewer")
+  /// Identity checks this user submitted (history kept).
+  identityVerifications IdentityVerification[] @relation("IdentitySubject")
+  /// Identity checks this user reviewed as an admin.
+  reviewedIdentities    IdentityVerification[] @relation("IdentityReviewer")
+  reviews               Review[]
+  savedBusinesses       SavedBusiness[]
+  contactEvents         ContactEvent[]
   /// Moderation decisions this user made as an admin.
-  moderationDecisions ModerationDecision[]
+  moderationDecisions   ModerationDecision[]
   /// Settings changes this user made as an admin.
-  settingChanges      SettingChange[]
+  settingChanges        SettingChange[]
 
   @@map("profiles")
 }
@@ -183,6 +187,7 @@ model Business {
   coverPublicId       String?                  @map("cover_public_id")
   status              BusinessStatus           @default(DRAFT)
   rejectionReason     String?                  @map("rejection_reason")
+  /// Deprecated: no longer used or shown. The public badge comes from the owner's ID check.
   isVerified          Boolean                  @default(false) @map("is_verified")
   isFeatured          Boolean                  @default(false) @map("is_featured")
   /// Denormalized counters, updated by app code (reviews and contact events are the source).
@@ -461,4 +466,73 @@ model SettingChange {
   @@index([createdAt(sort: Desc)])
   @@index([adminId])
   @@map("setting_changes")
+}
+
+// ---------------------------------------------------------------------------
+// Identity verification (visual check of a government ID + selfie by an admin)
+// ---------------------------------------------------------------------------
+
+enum IdType {
+  NIN_SLIP
+  VOTERS_CARD
+  DRIVERS_LICENCE
+  INTERNATIONAL_PASSPORT
+
+  @@map("id_type")
+}
+
+/// PENDING -> APPROVED | REJECTED by an admin. WITHDRAWN: the owner took it back.
+/// SUPERSEDED: replaced by a newer submission. Images of WITHDRAWN/SUPERSEDED rows are deleted
+/// immediately; others 90 days after the decision. The decision record itself is kept.
+enum IdentityStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  SUPERSEDED
+
+  @@map("identity_status")
+}
+
+/// One submission of an ID photo + selfie. At most one PENDING or APPROVED per user (partial
+/// unique index in the migration). ID NUMBERS ARE NEVER COLLECTED OR STORED.
+/// Images are private Cloudinary assets (customerhowfar/identity/<userId>/), viewable only by
+/// admins through short-lived signed links.
+model IdentityVerification {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  /// Null after the user's account is deleted; the daily job then deletes the images and name.
+  userId          String?        @map("user_id") @db.Uuid
+  idType          IdType         @map("id_type")
+  /// Full name exactly as typed by the user from their ID.
+  fullNameOnId    String         @map("full_name_on_id")
+  idFrontPublicId String?        @unique @map("id_front_public_id")
+  idFrontFormat   String?        @map("id_front_format")
+  idBackPublicId  String?        @unique @map("id_back_public_id")
+  idBackFormat    String?        @map("id_back_format")
+  selfiePublicId  String?        @unique @map("selfie_public_id")
+  selfieFormat    String?        @map("selfie_format")
+  consentGivenAt  DateTime       @map("consent_given_at")
+  status          IdentityStatus @default(PENDING)
+  /// Name the reviewing admin read on the ID (recorded when accepting).
+  nameReadByAdmin String?        @map("name_read_by_admin")
+  /// Shown to the owner when rejected.
+  rejectionReason String?        @map("rejection_reason")
+  reviewedById    String?        @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?      @map("reviewed_at")
+  submittedAt     DateTime       @default(now()) @map("submitted_at")
+  /// When the ID and selfie images were deleted from storage.
+  imagesDeletedAt DateTime?      @map("images_deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  user       Profile? @relation("IdentitySubject", fields: [userId], references: [id], onDelete: SetNull)
+  reviewedBy Profile? @relation("IdentityReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, submittedAt(sort: Desc)])
+  /// Admin queue (oldest first).
+  @@index([status, submittedAt])
+  /// Retention job.
+  @@index([imagesDeletedAt, reviewedAt])
+  @@index([reviewedById])
+  @@map("identity_verifications")
 }

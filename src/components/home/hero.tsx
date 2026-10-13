@@ -58,7 +58,7 @@ export function Hero() {
         <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-brand-50">
           <li className="flex items-center gap-1.5">
             <ShieldCheck aria-hidden="true" className="size-4 text-accent-300" />
-            Verified businesses
+            Every listing reviewed
           </li>
           <li className="flex items-center gap-1.5">
             <MessageCircle aria-hidden="true" className="size-4 text-accent-300" />

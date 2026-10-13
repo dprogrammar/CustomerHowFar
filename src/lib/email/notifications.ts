@@ -12,7 +12,11 @@ import {
   changesRequestedEmail,
   listingApprovedEmail,
   listingSuspendedEmail,
+  identityAcceptedEmail,
+  identityRejectedEmail,
+  adminIdentitySubmittedEmail,
 } from "./templates";
+import { ID_TYPE_LABELS } from "@/lib/identity/rules";
 
 // Each function loads what it needs, sends, and never throws. Call them from `after()` so they
 // run once the database change has committed and never delay or undo the action.
@@ -212,6 +216,67 @@ export function notifyProofRejected(paymentId: string) {
         reference: p.reference,
         reason: p.rejectionReason,
         payUrl: `${getSiteUrl()}/business/${p.business.id}/pay`,
+      }),
+    });
+  });
+}
+
+// --- Identity checks -----------------------------------------------------------------------
+
+async function loadIdentity(verificationId: string) {
+  return prisma.identityVerification.findUnique({
+    where: { id: verificationId },
+    select: {
+      id: true,
+      status: true,
+      idType: true,
+      rejectionReason: true,
+      userId: true,
+      user: { select: { fullName: true, email: true, _count: { select: { businesses: true } } } },
+    },
+  });
+}
+
+export function notifyIdentityReviewed(verificationId: string) {
+  return safely("identity-reviewed", async () => {
+    const v = await loadIdentity(verificationId);
+    if (!v?.user) return;
+    const site = getSiteUrl();
+    const to = { email: v.user.email, name: v.user.fullName };
+    if (v.status === "APPROVED") {
+      await sendEmail({
+        to,
+        tag: "identity-accepted",
+        ...identityAcceptedEmail({ ownerName: v.user.fullName, dashboardUrl: `${site}/dashboard` }),
+      });
+    } else if (v.status === "REJECTED" && v.rejectionReason) {
+      await sendEmail({
+        to,
+        tag: "identity-rejected",
+        ...identityRejectedEmail({
+          ownerName: v.user.fullName,
+          reason: v.rejectionReason,
+          resubmitUrl: `${site}/account/verify-identity`,
+        }),
+      });
+    }
+  });
+}
+
+export function notifyAdminOfIdentity(verificationId: string, resubmission: boolean) {
+  return safely("admin-identity", async () => {
+    const to = process.env.ADMIN_NOTIFY_EMAIL;
+    if (!to) return;
+    const v = await loadIdentity(verificationId);
+    if (!v || v.status !== "PENDING") return;
+    await sendEmail({
+      to: { email: to },
+      tag: "admin-identity",
+      ...adminIdentitySubmittedEmail({
+        idType: ID_TYPE_LABELS[v.idType] ?? v.idType,
+        businessCount: v.user?._count.businesses ?? 0,
+        resubmission,
+        reviewUrl: `${getSiteUrl()}/admin/identity/${v.id}`,
       }),
     });
   });

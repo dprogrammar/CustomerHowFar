@@ -2,6 +2,7 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
+import { getIdentityState, getIdentityStates } from "@/lib/identity/server";
 import { prisma } from "@/lib/prisma";
 
 export const ADMIN_TABS = [
@@ -42,10 +43,11 @@ const TAB_ORDER: Record<AdminTab, Prisma.BusinessOrderByWithRelationInput[]> = {
 };
 
 export async function getAdminOverview() {
-  const [byStatus, recheck, users] = await Promise.all([
+  const [byStatus, recheck, users, identity] = await Promise.all([
     prisma.business.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.business.count({ where: TAB_WHERE.recheck }),
     prisma.profile.count(),
+    prisma.identityVerification.count({ where: { status: "PENDING" } }),
   ]);
   const count = (status: string) => byStatus.find((s) => s.status === status)?._count._all ?? 0;
   return {
@@ -57,6 +59,7 @@ export async function getAdminOverview() {
     suspended: count("SUSPENDED"),
     drafts: count("DRAFT"),
     users,
+    identity,
   };
 }
 
@@ -96,7 +99,6 @@ export async function listAdminBusinesses(input: { tab: AdminTab; q: string; pag
         name: true,
         status: true,
         needsRecheck: true,
-        isVerified: true,
         isFeatured: true,
         submittedAt: true,
         updatedAt: true,
@@ -105,11 +107,17 @@ export async function listAdminBusinesses(input: { tab: AdminTab; q: string; pag
         phone: true,
         category: { select: { name: true } },
         state: { select: { name: true } },
-        owner: { select: { fullName: true, email: true } },
+        owner: { select: { id: true, fullName: true, email: true } },
       },
     }),
   ]);
-  return { total, items, page, pageCount: Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)) };
+  const idStates = await getIdentityStates([...new Set(items.map((b) => b.owner.id))]);
+  return {
+    total,
+    items: items.map((b) => ({ ...b, idState: idStates[b.owner.id] ?? ("NONE" as const) })),
+    page,
+    pageCount: Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)),
+  };
 }
 
 export async function getAdminBusiness(id: string) {
@@ -144,7 +152,13 @@ export async function getAdminBusiness(id: string) {
   });
 
   const hasPaid = business.payments.some((p) => p.status === "SUCCESS");
-  return { business, duplicates, hasPaid };
+  const { state, latest } = await getIdentityState(business.ownerId);
+  const identity = {
+    state,
+    id: latest?.id ?? null,
+    pendingId: state === "PENDING" ? latest!.id : null,
+  };
+  return { business, duplicates, hasPaid, identity };
 }
 
 export async function getSettingsWithHistory() {

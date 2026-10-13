@@ -19,27 +19,28 @@ policies, so the public Supabase Data API cannot read or write anything.
 
 ## Models
 
-| Model                | Purpose                                                                                                                                                                                                                                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AppSetting`         | Single row (id 1) of global admin settings: `paymentRequired` (listing fee on/off) and `listingFeeNaira`.                                                                                                                                                                                                               |
-| `Profile`            | App profile for a Supabase Auth user (same UUID). Name, phone, avatar and `role` (`CUSTOMER`, `BUSINESS_OWNER`, `ADMIN`).                                                                                                                                                                                               |
-| `Category`           | Service categories (e.g. Electricians). `slug` is permanent. `icon` is a lucide icon name resolved via `src/config/category-icons.ts`. `parentId` allows subcategories. Deactivate (`isActive = false`) instead of deleting.                                                                                            |
-| `State`              | The 36 states plus the FCT (37 rows).                                                                                                                                                                                                                                                                                   |
-| `Lga`                | All 774 Local Government Areas, each linked to its state. Slugs are unique _per state_ (Surulere exists in Lagos and Oyo).                                                                                                                                                                                              |
-| `Business`           | A listing owned by a `Profile`: name, category, contact details (phone, WhatsApp, email), address, state + LGA, services, opening hours (JSON), social links, logo/cover images, status, verification and featured flags, and denormalized counters (`viewCount`, `contactClickCount`, `ratingAverage`, `reviewCount`). |
-| `BusinessPhoto`      | Work photos for a business (Cloudinary public ID, dimensions, caption, order). Max 12 per business, enforced in app code.                                                                                                                                                                                               |
-| `Payment`            | Listing-fee payments via Paystack: amount in kobo, unique `reference` (makes webhooks idempotent), status, `paidAt`, raw provider `metadata`.                                                                                                                                                                           |
-| `Review`             | A customer's rating (1–5) and comment. One per user per business. `HIDDEN` reviews are kept but not shown.                                                                                                                                                                                                              |
-| `SavedBusiness`      | A user's saved/favourite businesses (composite key: user + business).                                                                                                                                                                                                                                                   |
-| `ContactEvent`       | One row per WhatsApp/call/email click, for analytics. `userId` is null for signed-out visitors.                                                                                                                                                                                                                         |
-| `ModerationDecision` | Append-only history of admin decisions on a business: `action` (`APPROVED`, `REJECTED`, `SUSPENDED`, `REINSTATED`), `comment`, admin, time. The latest `REJECTED` comment is shown to the owner as "Changes requested". (Named to avoid confusion with customer `Review`s.)                                             |
+| Model                  | Purpose                                                                                                                                                                                                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AppSetting`           | Single row (id 1) of global admin settings: `paymentRequired` (listing fee on/off) and `listingFeeNaira`.                                                                                                                                                                                                               |
+| `Profile`              | App profile for a Supabase Auth user (same UUID). Name, phone, avatar and `role` (`CUSTOMER`, `BUSINESS_OWNER`, `ADMIN`).                                                                                                                                                                                               |
+| `Category`             | Service categories (e.g. Electricians). `slug` is permanent. `icon` is a lucide icon name resolved via `src/config/category-icons.ts`. `parentId` allows subcategories. Deactivate (`isActive = false`) instead of deleting.                                                                                            |
+| `State`                | The 36 states plus the FCT (37 rows).                                                                                                                                                                                                                                                                                   |
+| `Lga`                  | All 774 Local Government Areas, each linked to its state. Slugs are unique _per state_ (Surulere exists in Lagos and Oyo).                                                                                                                                                                                              |
+| `Business`             | A listing owned by a `Profile`: name, category, contact details (phone, WhatsApp, email), address, state + LGA, services, opening hours (JSON), social links, logo/cover images, status, verification and featured flags, and denormalized counters (`viewCount`, `contactClickCount`, `ratingAverage`, `reviewCount`). |
+| `BusinessPhoto`        | Work photos for a business (Cloudinary public ID, dimensions, caption, order). Max 12 per business, enforced in app code.                                                                                                                                                                                               |
+| `Payment`              | Listing-fee payments via Paystack: amount in kobo, unique `reference` (makes webhooks idempotent), status, `paidAt`, raw provider `metadata`.                                                                                                                                                                           |
+| `Review`               | A customer's rating (1–5) and comment. One per user per business. `HIDDEN` reviews are kept but not shown.                                                                                                                                                                                                              |
+| `SavedBusiness`        | A user's saved/favourite businesses (composite key: user + business).                                                                                                                                                                                                                                                   |
+| `ContactEvent`         | One row per WhatsApp/call/email click, for analytics. `userId` is null for signed-out visitors.                                                                                                                                                                                                                         |
+| `IdentityVerification` | An owner's ID check: ID type, full name as typed from the ID, private ID/selfie images, consent time, status, reviewer and decision. History is kept; no ID numbers are ever stored.                                                                                                                                    |
+| `ModerationDecision`   | Append-only history of admin decisions on a business: `action` (`APPROVED`, `REJECTED`, `SUSPENDED`, `REINSTATED`), `comment`, admin, time. The latest `REJECTED` comment is shown to the owner as "Changes requested". (Named to avoid confusion with customer `Review`s.)                                             |
 
 | `SettingChange` | Audit log of admin changes to `AppSetting`: field, old and new value, admin, time.
 
 ### Moderation and payment fairness
 
-- `ModerationDecision.action` also records `RECHECKED`, `VERIFIED`/`UNVERIFIED` and
-  `FEATURED`/`UNFEATURED`, so every admin change to a listing is in its history.
+- `ModerationDecision.action` also records `RECHECKED` and `FEATURED`/`UNFEATURED`
+  (`VERIFIED`/`UNVERIFIED` exist only in old history; the admin Verify toggle was removed), so every admin change to a listing is in its history.
 - Admin actions only apply if the listing's status is still what the admin saw (row lock +
   status check), so two admins can't act on the same listing at once.
 - `Business.feeRequiredAtSubmit` records whether the listing fee was on when the owner last
@@ -69,6 +70,23 @@ policies, so the public Supabase Data API cannot read or write anything.
   "Confirm payment and approve listing" runs settlement and `approveBusinessInTx()` (all approval
   rules, including payment fairness) in one transaction.
 
+### Identity checks
+
+- `IdentityVerification` rows: `PENDING` -> `APPROVED` or `REJECTED` (with `rejectionReason`); also
+  `WITHDRAWN` (owner took it back) and `SUPERSEDED` (replaced by a newer submission). A partial
+  unique index allows at most one `PENDING`/`APPROVED` row per user; older rows are kept as history.
+- Images are private Cloudinary assets (`type: authenticated`) under
+  `customerhowfar/identity/<userId>/`, verified on the server (owner folder, jpg/png/webp, max
+  5 MB) and renamed to a random id. Admins view them only through
+  `/admin/identity/[id]/image/[kind]` (5-minute signed link). Owners never see them again.
+- Approval gate: `approveBusinessInTx()` requires the owner's check to be `APPROVED`;
+  "Accept ID and approve listing" accepts a pending check in the same transaction.
+- Retention: the daily Vercel Cron `/api/cron/identity-retention` (protected by `CRON_SECRET`)
+  deletes images 90 days after the decision, straight away for withdrawn/superseded rows, and
+  for rows whose account was deleted (`userId` null, names cleared). It sets `imagesDeletedAt`.
+- The only public trust badge is "ID submitted" (owner's check accepted). `Business.isVerified`
+  is no longer used or shown; it stays in the schema only for old data.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and
@@ -77,7 +95,8 @@ policies, so the public Supabase Data API cannot read or write anything.
 - Indexes: GIN on `search_vector` (full-text) and GIN `gin_trgm_ops` on `search_text` (typo
   tolerance via the `pg_trgm` extension in the `extensions` schema).
 - Queries live in `src/lib/business/public.ts`: prefix full-text match OR trigram word similarity
-  (≥ 0.45), ranked by relevance plus a boost for featured/verified listings.
+  (≥ 0.45), ranked by relevance plus a boost for featured listings and owners whose ID check
+  was accepted.
 - `viewCount` and `contactClickCount` are incremented with raw SQL from `/api/track`, so they never
   change `updated_at`.
 

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import {
-  BadgeCheck,
   Clock3,
   ExternalLink,
   Eye,
@@ -18,6 +17,7 @@ import { DAYS, STATUS_META, type BusinessStatus, type OpeningHours } from "@/lib
 import { cloudinaryUrl } from "@/lib/images";
 import { prisma } from "@/lib/prisma";
 import { BusinessCard } from "@/components/business/business-card";
+import { IdBadgePopover } from "@/components/business/id-badge";
 import { CategoryIcon } from "@/components/category-icon";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { Container } from "@/components/ui/container";
@@ -253,12 +253,7 @@ export async function BusinessProfile({
                 <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
                   {b.name}
                 </h1>
-                {b.isVerified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
-                    <BadgeCheck aria-hidden="true" className="size-4" />
-                    Verified
-                  </span>
-                )}
+                {b.idChecked && <IdBadgePopover />}
               </div>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 <Link

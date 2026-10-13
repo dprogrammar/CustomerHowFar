@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { BadgeCheck, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { BusinessCardData } from "@/lib/business/public";
 import { CategoryIcon } from "@/components/category-icon";
 import { CloudinaryImage } from "@/components/cloudinary-image";
+import { IdBadge } from "./id-badge";
 
 function initials(name: string) {
   return (
@@ -77,12 +78,7 @@ export function BusinessCard({
               {business.name}
             </Link>
           </h3>
-          {business.isVerified && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
-              <BadgeCheck aria-hidden="true" className="size-3.5" />
-              Verified
-            </span>
-          )}
+          {business.idChecked && <IdBadge />}
         </div>
         <p className="mt-1 text-sm font-medium text-brand-700">{business.categoryName}</p>
         {business.tagline && (

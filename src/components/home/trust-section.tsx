@@ -4,9 +4,9 @@ import { SectionHeading } from "./section-heading";
 
 const POINTS: { title: string; description: string; icon: LucideIcon }[] = [
   {
-    title: "Verified businesses",
+    title: "Reviewed listings",
     description:
-      "Look for the Verified badge. We check that a business is real and reachable before it is verified.",
+      "Our team reviews every listing before it goes live. The \u201cID submitted\u201d badge means the owner shared a government ID and selfie, which we checked by eye.",
     icon: ShieldCheck,
   },
   {

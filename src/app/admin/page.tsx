@@ -8,6 +8,7 @@ import {
   ClipboardList,
   CreditCard,
   FilePen,
+  IdCard,
   RefreshCcw,
   ShieldAlert,
   Store,
@@ -40,6 +41,13 @@ async function Overview() {
       href: "/admin/payments?tab=confirm",
       icon: Banknote,
       urgent: transfers > 0,
+    },
+    {
+      label: "Identity checks",
+      value: c.identity,
+      href: "/admin/identity",
+      icon: IdCard,
+      urgent: c.identity > 0,
     },
     {
       label: "Edited, needs re-check",

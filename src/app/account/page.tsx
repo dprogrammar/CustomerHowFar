@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, KeyRound, LogOut, Mail, Phone } from "lucide-react";
+import { CalendarDays, IdCard, KeyRound, LogOut, Mail, Phone } from "lucide-react";
 import { logoutAction } from "@/lib/auth/actions";
 import { initials, requireUser } from "@/lib/auth/session";
+import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
+import { getIdentityState } from "@/lib/identity/server";
 import { ProfileForm } from "@/components/account/profile-form";
 import { FormAlert } from "@/components/auth/form-fields";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,7 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
   const params = await searchParams;
   const notice = typeof params.updated === "string" ? NOTICES[params.updated] : undefined;
   const welcome = params.welcome === "1";
+  const { state: idState } = await getIdentityState(user.id);
   const memberSince = new Intl.DateTimeFormat("en-NG", { month: "long", year: "numeric" }).format(
     user.createdAt,
   );
@@ -93,6 +96,33 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
         </CardHeader>
         <CardContent>
           <ProfileForm fullName={user.fullName} phone={user.phone} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Identity check</CardTitle>
+          <CardDescription>
+            Business owners share a government ID and a selfie so customers can trust their
+            listings. Status:{" "}
+            <strong className="text-gray-900">{IDENTITY_STATE_LABELS[idState]}</strong>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/account/verify-identity"
+            className={buttonVariants({
+              variant: idState === "NONE" || idState === "REJECTED" ? "primary" : "outline",
+              size: "lg",
+            })}
+          >
+            <IdCard aria-hidden="true" />
+            {idState === "NONE"
+              ? "Verify your identity"
+              : idState === "REJECTED"
+                ? "Submit your ID again"
+                : "View ID check status"}
+          </Link>
         </CardContent>
       </Card>
 

@@ -23,7 +23,6 @@ const publicSelect = {
   whatsappNumber: true,
   email: true,
   area: true,
-  isVerified: true,
   isFeatured: true,
   logoPublicId: true,
   coverPublicId: true,
@@ -40,9 +39,25 @@ const publicSelect = {
     orderBy: { sortOrder: "asc" },
     select: { id: true, publicId: true, width: true, height: true, caption: true },
   },
+  owner: {
+    select: {
+      identityVerifications: { where: { status: "APPROVED" }, select: { id: true }, take: 1 },
+    },
+  },
 } satisfies Prisma.BusinessSelect;
 
-export type PublicBusiness = Prisma.BusinessGetPayload<{ select: typeof publicSelect }>;
+type PublicBusinessRow = Prisma.BusinessGetPayload<{ select: typeof publicSelect }>;
+/**
+ * `idChecked`: the owner's ID check was accepted by the team (shown as the "ID submitted"
+ * badge). It is a visual check, never an official verification. Owner data is not exposed.
+ */
+export type PublicBusiness = Omit<PublicBusinessRow, "owner"> & { idChecked: boolean };
+
+function toPublic(row: PublicBusinessRow | null): PublicBusiness | null {
+  if (!row) return null;
+  const { owner, ...rest } = row;
+  return { ...rest, idChecked: owner.identityVerifications.length > 0 };
+}
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -52,13 +67,15 @@ export async function getPublicBusiness(slug: string): Promise<PublicBusiness | 
   cacheLife("days");
   cacheTag(PUBLIC_TAGS.business(slug));
   if (!SLUG.test(slug) || slug.length > 120) return null;
-  return prisma.business.findFirst({ where: { slug, status: "APPROVED" }, select: publicSelect });
+  return toPublic(
+    await prisma.business.findFirst({ where: { slug, status: "APPROVED" }, select: publicSelect }),
+  );
 }
 
 /** Any-status business by slug, for owner/admin previews. Never cached. */
 export async function getBusinessForPreview(slug: string): Promise<PublicBusiness | null> {
   if (!SLUG.test(slug) || slug.length > 120) return null;
-  return prisma.business.findUnique({ where: { slug }, select: publicSelect });
+  return toPublic(await prisma.business.findUnique({ where: { slug }, select: publicSelect }));
 }
 
 // --- Cards --------------------------------------------------------------------------------
@@ -69,7 +86,8 @@ export type BusinessCardData = {
   name: string;
   tagline: string | null;
   area: string | null;
-  isVerified: boolean;
+  /** Owner's ID check accepted ("ID submitted" badge). */
+  idChecked: boolean;
   isFeatured: boolean;
   logoPublicId: string | null;
   coverPublicId: string | null;
@@ -79,29 +97,35 @@ export type BusinessCardData = {
   lgaName: string | null;
 };
 
-const cardSelect = {
+export const cardSelect = {
   id: true,
   slug: true,
   name: true,
   tagline: true,
   area: true,
-  isVerified: true,
   isFeatured: true,
   logoPublicId: true,
   coverPublicId: true,
   category: { select: { name: true, icon: true } },
   state: { select: { name: true } },
   lga: { select: { name: true } },
+  owner: {
+    select: {
+      identityVerifications: { where: { status: "APPROVED" }, select: { id: true }, take: 1 },
+    },
+  },
 } satisfies Prisma.BusinessSelect;
 
-function toCard(b: Prisma.BusinessGetPayload<{ select: typeof cardSelect }>): BusinessCardData {
+export function toCard(
+  b: Prisma.BusinessGetPayload<{ select: typeof cardSelect }>,
+): BusinessCardData {
   return {
     id: b.id,
     slug: b.slug,
     name: b.name,
     tagline: b.tagline,
     area: b.area,
-    isVerified: b.isVerified,
+    idChecked: b.owner.identityVerifications.length > 0,
     isFeatured: b.isFeatured,
     logoPublicId: b.logoPublicId,
     coverPublicId: b.coverPublicId,
@@ -128,7 +152,6 @@ export async function getSimilarBusinesses(input: {
   };
   const order: Prisma.BusinessOrderByWithRelationInput[] = [
     { isFeatured: "desc" },
-    { isVerified: "desc" },
     { publishedAt: "desc" },
   ];
   const sameState = input.stateId
@@ -166,7 +189,7 @@ export async function getHomepageBusinesses(limit = 6): Promise<BusinessCardData
     featured.length < limit
       ? await prisma.business.findMany({
           where: { status: "APPROVED", isFeatured: false },
-          orderBy: [{ isVerified: "desc" }, { publishedAt: "desc" }],
+          orderBy: [{ publishedAt: "desc" }],
           take: limit - featured.length,
           select: cardSelect,
         })
@@ -255,7 +278,7 @@ type Row = {
   name: string;
   tagline: string | null;
   area: string | null;
-  is_verified: boolean;
+  id_checked: boolean;
   is_featured: boolean;
   logo_public_id: string | null;
   cover_public_id: string | null;
@@ -268,7 +291,7 @@ type Row = {
 /**
  * Approved businesses matching the query and filters. Full-text search (stemmed, prefix) plus
  * trigram word similarity so small typos still match ("tailer" -> tailors). Ranked by
- * relevance with a boost for featured and verified businesses.
+ * relevance with a boost for featured businesses and owners whose ID check was accepted.
  */
 export async function searchBusinesses(input: SearchParamsInput): Promise<SearchResult> {
   "use cache";
@@ -302,7 +325,8 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
         + CASE WHEN position(${q} in lower(b.name)) > 0 THEN 1 ELSE 0 END
       )`
     : Prisma.sql`0`;
-  const boost = Prisma.sql`(CASE WHEN b.is_featured THEN 0.3 ELSE 0 END + CASE WHEN b.is_verified THEN 0.15 ELSE 0 END)`;
+  const idChecked = Prisma.sql`EXISTS (SELECT 1 FROM identity_verifications iv WHERE iv.user_id = b.owner_id AND iv.status = 'APPROVED')`;
+  const boost = Prisma.sql`(CASE WHEN b.is_featured THEN 0.3 ELSE 0 END + CASE WHEN ${idChecked} THEN 0.15 ELSE 0 END)`;
 
   const orderBy =
     input.sort === "newest"
@@ -320,7 +344,7 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
 
   const [rows, countRows] = await Promise.all([
     prisma.$queryRaw<Row[]>`
-      SELECT b.id, b.slug, b.name, b.tagline, b.area, b.is_verified, b.is_featured,
+      SELECT b.id, b.slug, b.name, b.tagline, b.area, ${idChecked} AS id_checked, b.is_featured,
              b.logo_public_id, b.cover_public_id,
              c.name AS category_name, c.icon AS category_icon,
              s.name AS state_name, l.name AS lga_name
@@ -336,7 +360,7 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
     name: r.name,
     tagline: r.tagline,
     area: r.area,
-    isVerified: r.is_verified,
+    idChecked: r.id_checked,
     isFeatured: r.is_featured,
     logoPublicId: r.logo_public_id,
     coverPublicId: r.cover_public_id,

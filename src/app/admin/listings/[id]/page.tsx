@@ -6,7 +6,9 @@ import { getAdminBusiness } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/session";
 import { DAYS, formatNaira, type BusinessStatus, type OpeningHours } from "@/lib/business/rules";
 import { cloudinaryUrl } from "@/lib/images";
+import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
 import { PAYMENT_STATUS_LABELS } from "@/lib/payments/methods";
+import { IdentityStatusBadge } from "@/components/admin/identity-status-badge";
 import { ModerationPanel } from "@/components/admin/moderation-panel";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
@@ -33,8 +35,8 @@ const ACTION_LABELS: Record<string, string> = {
   SUSPENDED: "Suspended",
   REINSTATED: "Reinstated",
   RECHECKED: "Marked as re-checked",
-  VERIFIED: "Verified badge added",
-  UNVERIFIED: "Verified badge removed",
+  VERIFIED: "Old badge added",
+  UNVERIFIED: "Old badge removed",
   FEATURED: "Featured",
   UNFEATURED: "Unfeatured",
 };
@@ -84,7 +86,7 @@ function ExternalLinkOrEmpty({ href }: { href: string | null }) {
 async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
   await requireAdmin();
   const { id } = await params;
-  const { business: b, duplicates, hasPaid } = await getAdminBusiness(id);
+  const { business: b, duplicates, hasPaid, identity } = await getAdminBusiness(id);
   const status = b.status as BusinessStatus;
   const hours = b.openingHours as OpeningHours | null;
   const fullSize = (publicId: string) => cloudinaryUrl(publicId, { width: 2000 });
@@ -102,7 +104,7 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">{b.name}</h1>
         <StatusBadge status={status} />
         {b.needsRecheck && <Badge variant="accent">Edited since approval</Badge>}
-        {b.isVerified && <Badge variant="verified">Verified</Badge>}
+        <IdentityStatusBadge state={identity.state} />
         {b.isFeatured && <Badge variant="accent">Featured</Badge>}
         <Link
           href={`/business/${b.slug}`}
@@ -318,9 +320,9 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
               businessName={b.name}
               status={status}
               needsRecheck={b.needsRecheck}
-              isVerified={b.isVerified}
               isFeatured={b.isFeatured}
               paymentBlocksApproval={b.feeRequiredAtSubmit && !hasPaid}
+              identity={{ state: identity.state, pendingId: identity.pendingId }}
             />
           </div>
           <Section title="Owner">
@@ -331,6 +333,18 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
               </Field>
               <Field label="Phone">{b.owner.phone}</Field>
               <Field label="Joined">{dateOnly.format(b.owner.createdAt)}</Field>
+              <Field label="ID check">
+                {identity.id ? (
+                  <Link
+                    href={`/admin/identity/${identity.id}`}
+                    className="text-brand-700 underline"
+                  >
+                    {IDENTITY_STATE_LABELS[identity.state]} · open ID check
+                  </Link>
+                ) : (
+                  IDENTITY_STATE_LABELS.NONE
+                )}
+              </Field>
             </dl>
           </Section>
           <Section title="Timeline">

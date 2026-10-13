@@ -6,6 +6,7 @@ import {
   CircleAlert,
   CreditCard,
   Eye,
+  IdCard,
   Pencil,
   Plus,
   ShieldAlert,
@@ -18,6 +19,7 @@ import {
   firstIncompleteStep,
   type BusinessStatus,
 } from "@/lib/business/rules";
+import { getIdentityState } from "@/lib/identity/server";
 import { formatKobo } from "@/lib/payments/methods";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
@@ -193,9 +195,69 @@ function BusinessCardRow({ b }: { b: DashboardBusiness }) {
   );
 }
 
+/** Asks owners to complete their ID check until it's accepted (listings need it to be approved). */
+function IdentityBanner({
+  state,
+  reason,
+}: {
+  state: "NONE" | "PENDING" | "REJECTED";
+  reason: string | null;
+}) {
+  if (state === "PENDING") {
+    return (
+      <div
+        role="note"
+        className="mt-6 flex gap-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-950 ring-1 ring-blue-200"
+      >
+        <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+        <p>
+          <strong className="font-semibold">Your ID is being checked.</strong> We&apos;ll email you
+          when it&apos;s done, usually within 1 to 2 working days.{" "}
+          <Link
+            href="/account/verify-identity"
+            className="font-medium underline underline-offset-2"
+          >
+            View status
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div
+      role="note"
+      className="mt-6 rounded-xl bg-accent-50 p-4 text-sm text-accent-900 ring-1 ring-accent-200"
+    >
+      <p className="flex gap-3">
+        <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+        <span>
+          <strong className="block font-semibold">
+            {state === "REJECTED" ? "Please submit your ID again" : "Verify your identity"}
+          </strong>
+          {state === "REJECTED"
+            ? `We couldn't accept your ID check${reason ? `: ${reason}` : "."}`
+            : "Share a photo of your government ID and a selfie holding it. New listings are approved only after our team has checked your ID. It takes about 2 minutes."}
+        </span>
+      </p>
+      <Link
+        href="/account/verify-identity"
+        className={buttonVariants({
+          variant: "primary",
+          className: "mt-3 w-full sm:ml-8 sm:w-auto",
+        })}
+      >
+        {state === "REJECTED" ? "Submit again" : "Verify your identity"}
+      </Link>
+    </div>
+  );
+}
+
 async function DashboardContent() {
   const user = await requireUser("/dashboard");
-  const businesses = await getOwnerDashboard(user.id);
+  const [businesses, identity] = await Promise.all([
+    getOwnerDashboard(user.id),
+    getIdentityState(user.id),
+  ]);
   const atLimit = businesses.length >= MAX_BUSINESSES_PER_USER;
 
   return (
@@ -216,6 +278,10 @@ async function DashboardContent() {
           </Link>
         )}
       </div>
+
+      {businesses.length > 0 && identity.state !== "APPROVED" && (
+        <IdentityBanner state={identity.state} reason={identity.latest?.rejectionReason ?? null} />
+      )}
 
       {businesses.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">

@@ -14,6 +14,7 @@ import {
   type OpeningHours,
 } from "@/lib/business/rules";
 import { getActiveCategories, getLgasGroupedByState, getStates } from "@/lib/data/catalog";
+import { getIdentityState } from "@/lib/identity/server";
 import { FormAlert } from "@/components/auth/form-fields";
 import { BusinessPreview } from "@/components/business/business-preview";
 import { StatusBadge } from "@/components/business/status-badge";
@@ -194,6 +195,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
     );
   } else {
     const missing = missingItems(completeness);
+    const { state: idState } = await getIdentityState(user.id);
     body = (
       <div className="space-y-6">
         <div>
@@ -233,6 +235,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
             businessId={business.id}
             resubmit={status === "REJECTED"}
             disabled={missing.length > 0}
+            idState={idState}
           />
         ) : (
           <Link href="/dashboard" className={buttonVariants({ size: "lg" })}>

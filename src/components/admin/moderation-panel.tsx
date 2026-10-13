@@ -2,8 +2,8 @@
 
 import { useId, useState, useTransition } from "react";
 import {
-  BadgeCheck,
   CircleCheck,
+  IdCard,
   MessageSquareWarning,
   RefreshCcw,
   ShieldAlert,
@@ -19,11 +19,13 @@ import {
   suspendListingAction,
   type AdminActionResult,
 } from "@/lib/admin/actions";
+import { acceptIdentityAndApproveAction } from "@/lib/identity/admin-actions";
+import { IDENTITY_STATE_LABELS, type IdentityState } from "@/lib/identity/rules";
 import type { BusinessStatus } from "@/lib/business/rules";
 import { FormAlert } from "@/components/auth/form-fields";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Label, Textarea } from "@/components/ui/input";
+import { Input, Label, Textarea } from "@/components/ui/input";
 
 export const QUICK_REASONS = [
   "Photos are unclear or not your work. Please upload clear photos of jobs you have done yourself.",
@@ -41,28 +43,30 @@ const QUICK_LABELS = [
   "Address incomplete",
 ];
 
-type Dialog = "approve" | "reject" | "suspend" | "reinstate" | null;
+type Dialog = "approve" | "approveBoth" | "reject" | "suspend" | "reinstate" | null;
 
 export function ModerationPanel({
   businessId,
   businessName,
   status,
   needsRecheck,
-  isVerified,
   isFeatured,
   paymentBlocksApproval,
+  identity,
 }: {
   businessId: string;
   businessName: string;
   status: BusinessStatus;
   needsRecheck: boolean;
-  isVerified: boolean;
   isFeatured: boolean;
   /** Fee was on at submission and there's no successful payment. */
   paymentBlocksApproval: boolean;
+  /** The owner's ID check; listings can only be approved once it's accepted. */
+  identity: { state: IdentityState; pendingId: string | null };
 }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [comment, setComment] = useState("");
+  const [nameRead, setNameRead] = useState("");
   const [result, setResult] = useState<AdminActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   const commentId = useId();
@@ -76,6 +80,7 @@ export function ModerationPanel({
       if (outcome.ok) {
         setDialog(null);
         setComment("");
+        setNameRead("");
       }
     });
   }
@@ -85,6 +90,8 @@ export function ModerationPanel({
   const canSuspend = ["APPROVED", "PENDING_REVIEW", "PENDING_PAYMENT", "REJECTED"].includes(status);
   const canReinstate = status === "SUSPENDED";
   const canRecheck = status === "APPROVED" && needsRecheck;
+  const idAccepted = identity.state === "APPROVED";
+  const canApproveBoth = canApprove && identity.state === "PENDING" && identity.pendingId !== null;
 
   return (
     <section
@@ -110,12 +117,30 @@ export function ModerationPanel({
         </p>
       )}
 
+      {canApprove && !idAccepted && (
+        <p className="mt-3 rounded-lg bg-accent-50 p-3 text-sm text-accent-900 ring-1 ring-accent-200">
+          Owner&apos;s ID check: <strong>{IDENTITY_STATE_LABELS[identity.state]}</strong>. The
+          listing can&apos;t be approved until the owner&apos;s ID is accepted.
+        </p>
+      )}
+
       <div className="mt-4 grid grid-cols-1 gap-2">
+        {canApproveBoth && (
+          <Button
+            size="lg"
+            onClick={() => setDialog("approveBoth")}
+            disabled={pending || paymentBlocksApproval}
+          >
+            <IdCard aria-hidden="true" />
+            Accept ID and approve listing
+          </Button>
+        )}
         {canApprove && (
           <Button
             size="lg"
+            variant={canApproveBoth ? "outline" : "primary"}
             onClick={() => setDialog("approve")}
-            disabled={pending || paymentBlocksApproval}
+            disabled={pending || paymentBlocksApproval || !idAccepted}
           >
             <CircleCheck aria-hidden="true" />
             Approve
@@ -158,18 +183,7 @@ export function ModerationPanel({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4">
-        <Button
-          variant={isVerified ? "secondary" : "outline"}
-          aria-pressed={isVerified}
-          disabled={pending}
-          onClick={() =>
-            run(() => setListingFlagAction({ businessId, flag: "verified", value: !isVerified }))
-          }
-        >
-          <BadgeCheck aria-hidden="true" />
-          {isVerified ? "Verified" : "Verify"}
-        </Button>
+      <div className="mt-4 grid grid-cols-1 gap-2 border-t border-border pt-4">
         <Button
           variant={isFeatured ? "secondary" : "outline"}
           aria-pressed={isFeatured}
@@ -192,6 +206,67 @@ export function ModerationPanel({
         onConfirm={() => run(() => approveListingAction(expected))}
         pending={pending}
       />
+
+      {identity.pendingId && (
+        <ConfirmDialog
+          open={dialog === "approveBoth"}
+          onClose={() => setDialog(null)}
+          title={"Accept ID and approve listing?"}
+          description="Check that the face in the selfie matches the ID photo and that the ID is readable. Both decisions are recorded with your name and the time; the listing goes live and the owner is emailed."
+          confirmLabel="Accept ID and approve"
+          confirmDisabled={nameRead.trim().length < 2}
+          onConfirm={() =>
+            run(() =>
+              acceptIdentityAndApproveAction({
+                businessId,
+                verificationId: identity.pendingId!,
+                nameReadByAdmin: nameRead,
+              }),
+            )
+          }
+          pending={pending}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            {(["front", "selfie"] as const).map((kind) => (
+              <a
+                key={kind}
+                href={`/admin/identity/${identity.pendingId}/image/${kind}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block overflow-hidden rounded-lg bg-muted ring-1 ring-border"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- short-lived private link */}
+                <img
+                  src={`/admin/identity/${identity.pendingId}/image/${kind}`}
+                  alt={kind === "front" ? "ID photo" : "Selfie holding the ID"}
+                  className="aspect-[4/3] w-full object-contain"
+                />
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-sm">
+            <a
+              href={`/admin/identity/${identity.pendingId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand-700 underline"
+            >
+              Open the full ID check
+            </a>{" "}
+            to zoom in and see the history.
+          </p>
+          <div className="mt-3">
+            <Label htmlFor={`${commentId}-name`}>Name you read on the ID</Label>
+            <Input
+              id={`${commentId}-name`}
+              autoComplete="off"
+              maxLength={120}
+              value={nameRead}
+              onChange={(event) => setNameRead(event.target.value)}
+            />
+          </div>
+        </ConfirmDialog>
+      )}
 
       <ConfirmDialog
         open={dialog === "reject"}

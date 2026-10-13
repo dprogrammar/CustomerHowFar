@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { cardSelect, toCard } from "@/lib/business/public";
 import { prisma } from "@/lib/prisma";
 import { BusinessCard } from "@/components/business/business-card";
 import { SaveButton } from "@/components/business/public/save-button";
@@ -17,22 +18,7 @@ async function SavedList() {
     where: { userId: user.id, business: { status: "APPROVED" } },
     orderBy: { createdAt: "desc" },
     select: {
-      business: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          tagline: true,
-          area: true,
-          isVerified: true,
-          isFeatured: true,
-          logoPublicId: true,
-          coverPublicId: true,
-          category: { select: { name: true, icon: true } },
-          state: { select: { name: true } },
-          lga: { select: { name: true } },
-        },
-      },
+      business: { select: cardSelect },
     },
   });
 
@@ -57,23 +43,7 @@ async function SavedList() {
       <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {saved.map(({ business: b }) => (
           <li key={b.id} className="relative">
-            <BusinessCard
-              business={{
-                id: b.id,
-                slug: b.slug,
-                name: b.name,
-                tagline: b.tagline,
-                area: b.area,
-                isVerified: b.isVerified,
-                isFeatured: b.isFeatured,
-                logoPublicId: b.logoPublicId,
-                coverPublicId: b.coverPublicId,
-                categoryName: b.category.name,
-                categoryIcon: b.category.icon,
-                stateName: b.state?.name ?? null,
-                lgaName: b.lga?.name ?? null,
-              }}
-            />
+            <BusinessCard business={toCard(b)} />
             <div className="absolute top-2 right-2 z-10 rounded-lg bg-white">
               <SaveButton businessId={b.id} initialSaved />
             </div>

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Banknote,
   ClipboardList,
+  IdCard,
   LayoutDashboard,
   ListChecks,
   Settings,
@@ -32,6 +33,12 @@ const ITEMS: {
     match: (p, tab) =>
       p.startsWith("/admin/listings") &&
       !(p === "/admin/listings" && (tab === null || tab === "review")),
+  },
+  {
+    label: "Identity checks",
+    href: "/admin/identity",
+    icon: IdCard,
+    match: (p) => p.startsWith("/admin/identity"),
   },
   {
     label: "Payments",

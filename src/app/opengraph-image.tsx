@@ -44,7 +44,7 @@ export default function OpengraphImage() {
       </div>
 
       <div style={{ display: "flex", gap: 16, fontSize: 26 }}>
-        {["Verified businesses", "Real work photos", "Chat on WhatsApp"].map((label) => (
+        {["Reviewed listings", "Real work photos", "Chat on WhatsApp"].map((label) => (
           <div
             key={label}
             style={{

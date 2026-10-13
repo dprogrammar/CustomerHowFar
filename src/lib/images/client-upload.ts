@@ -20,7 +20,10 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) 
  */
 export async function prepareImage(
   file: File,
-  { keepTransparency = false }: { keepTransparency?: boolean } = {},
+  {
+    keepTransparency = false,
+    maxDimension = MAX_IMAGE_DIMENSION,
+  }: { keepTransparency?: boolean; maxDimension?: number } = {},
 ): Promise<PreparedImage> {
   if (!file.type.startsWith("image/")) throw new Error("Please choose a photo (JPG, PNG or WebP).");
   if (file.size > MAX_INPUT_BYTES)
@@ -33,7 +36,7 @@ export async function prepareImage(
     throw new Error("This photo format isn't supported. Please choose a JPG, PNG or WebP photo.");
   }
 
-  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
 
@@ -72,10 +75,11 @@ type Signature = {
 };
 
 /** Signing endpoints: public listing photos, or private payment proofs. */
-export type UploadKind = "photo" | "proof";
+export type UploadKind = "photo" | "proof" | "identity";
 const SIGN_ENDPOINTS: Record<UploadKind, string> = {
   photo: "/api/uploads/sign",
   proof: "/api/uploads/sign-proof",
+  identity: "/api/uploads/sign-identity",
 };
 
 const cachedSignatures = new Map<UploadKind, { value: Signature; fetchedAt: number }>();

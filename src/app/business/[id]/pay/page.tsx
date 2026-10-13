@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { CircleAlert, Clock3 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { getWizardBusiness, hasSuccessfulPayment } from "@/lib/business/queries";
+import { getIdentityState } from "@/lib/identity/server";
 import { getPaymentConfig } from "@/lib/payments/config";
 import { availableMethods, formatKobo } from "@/lib/payments/methods";
 import { getOwnerTransferState } from "@/lib/payments/queries";
@@ -61,7 +62,12 @@ async function PayContent({ params }: PageProps<"/business/[id]/pay">) {
               : "Good news: the listing fee isn't required right now."}{" "}
             Submit your listing to send it to our team for review.
           </p>
-          <SubmitListingForm businessId={business.id} resubmit={false} disabled={false} />
+          <SubmitListingForm
+            businessId={business.id}
+            resubmit={false}
+            disabled={false}
+            idState={(await getIdentityState(user.id)).state}
+          />
         </div>
       </WizardFrame>
     );

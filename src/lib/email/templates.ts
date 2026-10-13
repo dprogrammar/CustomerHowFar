@@ -287,6 +287,79 @@ export function paymentReceiptEmail(input: {
   };
 }
 
+// --- Identity checks -----------------------------------------------------------------------
+
+export function identityAcceptedEmail(input: {
+  ownerName: string;
+  dashboardUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: "Your ID check is complete",
+    html: layout({
+      preheader: "Our team has accepted your ID and selfie.",
+      heading: "Your ID check is complete",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          "Thank you. Our team has checked your ID and selfie and accepted them. Your approved listings now show an <strong>ID submitted</strong> badge, so customers know you've shared your ID with us.",
+        ) +
+        button("View my businesses", input.dashboardUrl) +
+        paragraph(
+          "We delete your ID photo and selfie 90 days after our review. We keep only a record that the check was done.",
+        ),
+    }),
+    text: `Hi ${first},\n\nOur team has checked your ID and selfie and accepted them. Your approved listings now show an "ID submitted" badge.\n\n${input.dashboardUrl}\n\nWe delete your ID photo and selfie 90 days after our review.${textFooter()}`,
+  };
+}
+
+export function identityRejectedEmail(input: {
+  ownerName: string;
+  reason: string;
+  resubmitUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: "Please submit your ID again",
+    html: layout({
+      preheader: "We couldn't accept your ID check. Here's why.",
+      heading: "We couldn't accept your ID check",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph("Our team looked at your ID and selfie but couldn't accept them:") +
+        quote(input.reason) +
+        button("Submit again", input.resubmitUrl) +
+        paragraph(
+          "Tip: take the photos in good light, keep the ID beside your chin (not covering your face), and make sure the ID details are sharp and readable.",
+        ),
+    }),
+    text: `Hi ${first},\n\nWe couldn't accept your ID check:\n\n${input.reason}\n\nSubmit again: ${input.resubmitUrl}${textFooter()}`,
+  };
+}
+
+export function adminIdentitySubmittedEmail(input: {
+  idType: string;
+  businessCount: number;
+  resubmission: boolean;
+  reviewUrl: string;
+}): RenderedEmail {
+  // No names, emails or images in this email: admins open the check in the admin area.
+  const kind = input.resubmission ? "Resubmitted ID check" : "New ID check";
+  return {
+    subject: `[ID check] ${kind} waiting`,
+    html: layout({
+      preheader: "A business owner submitted an ID and selfie.",
+      heading: `${kind} waiting for review`,
+      body:
+        detailsTable([
+          ["ID type", input.idType],
+          ["Businesses owned", String(input.businessCount)],
+        ]) + button("Open identity checks", input.reviewUrl),
+    }),
+    text: `${kind} waiting for review.\nID type: ${input.idType}\nBusinesses owned: ${input.businessCount}\n\n${input.reviewUrl}`,
+  };
+}
+
 export function proofRejectedEmail(input: {
   ownerName: string;
   businessName: string;

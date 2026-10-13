@@ -231,7 +231,7 @@ export async function markRecheckedAction(input: z.input<typeof base>): Promise<
 
 const flagSchema = z.object({
   businessId: z.uuid(),
-  flag: z.enum(["verified", "featured"]),
+  flag: z.enum(["featured"]),
   value: z.boolean(),
 });
 
@@ -242,15 +242,15 @@ export async function setListingFlagAction(
   const admin = await requireAdmin();
   const parsed = flagSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { businessId, flag, value } = parsed.data;
-  const field = flag === "verified" ? "isVerified" : "isFeatured";
-  const action: ModerationAction =
-    flag === "verified" ? (value ? "VERIFIED" : "UNVERIFIED") : value ? "FEATURED" : "UNFEATURED";
+  // Only "featured" is settable. The old admin "Verified" badge was removed: the only public
+  // trust signal is the owner's accepted ID check (see lib/identity).
+  const { businessId, value } = parsed.data;
+  const action: ModerationAction = value ? "FEATURED" : "UNFEATURED";
 
   const changed = await prisma.$transaction(async (tx) => {
     const updated = await tx.business.updateMany({
-      where: { id: businessId, [field]: !value },
-      data: { [field]: value },
+      where: { id: businessId, isFeatured: !value },
+      data: { isFeatured: value },
     });
     if (updated.count !== 1) return false;
     await tx.moderationDecision.create({ data: { businessId, adminId: admin.id, action } });
@@ -259,8 +259,7 @@ export async function setListingFlagAction(
   if (!changed) return { ok: false, error: STALE };
   await revalidateById(businessId);
   refresh();
-  const label = flag === "verified" ? "Verified badge" : "Featured";
-  return { ok: true, message: `${label} ${value ? "on" : "off"}.` };
+  return { ok: true, message: `Featured ${value ? "on" : "off"}.` };
 }
 
 const optionalText = (max: number) =>

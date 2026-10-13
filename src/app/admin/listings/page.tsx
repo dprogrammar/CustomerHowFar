@@ -1,15 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  BadgeCheck,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCcw,
-  Search,
-  Star,
-  Store,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCcw, Search, Star, Store } from "lucide-react";
 import {
   ADMIN_TABS,
   getAdminOverview,
@@ -18,6 +10,7 @@ import {
   type AdminTab,
 } from "@/lib/admin/queries";
 import { requireAdmin } from "@/lib/auth/session";
+import { IdentityStatusBadge } from "@/components/admin/identity-status-badge";
 import type { BusinessStatus } from "@/lib/business/rules";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
@@ -151,9 +144,7 @@ async function Listings({ searchParams }: Pick<PageProps<"/admin/listings">, "se
                         Edited
                       </span>
                     )}
-                    {b.isVerified && (
-                      <BadgeCheck aria-label="Verified" className="size-4 text-brand-700" />
-                    )}
+                    <IdentityStatusBadge state={b.idState} />
                     {b.isFeatured && (
                       <Star
                         aria-label="Featured"
