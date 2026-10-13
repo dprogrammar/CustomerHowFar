@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/catalog";
 import { searchHref, type SearchMode, type SearchValues } from "@/lib/search/url";
 import { BusinessCard } from "@/components/business/business-card";
+import { NotLiveNotice } from "@/components/service-areas/not-live-notice";
 import { buttonVariants } from "@/components/ui/button";
 import { DesktopFilters, MobileFilters } from "./search-filters";
 
@@ -170,6 +171,19 @@ export async function SearchView({
               </li>
             )}
           </ul>
+        )}
+
+        {state && !state.isActive && (
+          <NotLiveNotice
+            stateName={state.name}
+            stateSlug={state.slug}
+            suggestions={states
+              .filter((s) => s.isActive)
+              .map((s) => ({
+                name: s.name,
+                href: searchHref(mode, { ...values, state: s.slug, lga: undefined, page: 1 }),
+              }))}
+          />
         )}
 
         {result.total === 0 ? (

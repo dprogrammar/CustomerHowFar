@@ -9,6 +9,7 @@ import {
   IdCard,
   LayoutDashboard,
   ListChecks,
+  MapPinned,
   Settings,
   Activity,
   Users,
@@ -60,6 +61,12 @@ const ITEMS: {
     href: "/admin/payments",
     icon: Banknote,
     match: (p) => p.startsWith("/admin/payments"),
+  },
+  {
+    label: "Service areas",
+    href: "/admin/service-areas",
+    icon: MapPinned,
+    match: (p) => p.startsWith("/admin/service-areas"),
   },
   {
     label: "Settings",

@@ -444,6 +444,38 @@ ${input.message}`,
   };
 }
 
+// --- Service areas ---------------------------------------------------------------------------
+
+export function waitlistLaunchEmail(input: {
+  name: string | null;
+  stateName: string;
+  role: "CUSTOMER" | "BUSINESS";
+  actionUrl: string;
+  unsubscribeUrl: string;
+}): RenderedEmail {
+  const hi = input.name?.split(" ")[0] || "there";
+  const business = input.role === "BUSINESS";
+  const lead = business
+    ? `Good news: CustomerHowFar is now accepting businesses in ${input.stateName}. List your business for free and let customers near you find your work.`
+    : `Good news: CustomerHowFar is now live in ${input.stateName}. Find trusted artisans and businesses near you and chat with them directly on WhatsApp.`;
+  const cta = business ? "List your business" : "Find a business";
+  return {
+    subject: `CustomerHowFar is now live in ${input.stateName}`,
+    html: layout({
+      preheader: `We've launched in ${input.stateName}.`,
+      heading: `We're now live in ${input.stateName}`,
+      body:
+        paragraph(`Hi ${escapeHtml(hi)},`) +
+        paragraph(escapeHtml(lead)) +
+        button(cta, input.actionUrl) +
+        paragraph(
+          `You're receiving this because you joined our waitlist for ${escapeHtml(input.stateName)}. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:${BRAND}">Unsubscribe</a>.`,
+        ),
+    }),
+    text: `Hi ${hi},\n\n${lead}\n\n${cta}: ${input.actionUrl}\n\nYou joined our waitlist for ${input.stateName}. Unsubscribe: ${input.unsubscribeUrl}${textFooter()}`,
+  };
+}
+
 // --- Identity checks -----------------------------------------------------------------------
 
 export function identityAcceptedEmail(input: {

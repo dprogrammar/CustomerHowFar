@@ -10,6 +10,8 @@ import { ensureProfile } from "@/lib/auth/profile";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
 import { deleteCloudinaryImage, userUploadFolder, verifyUploadedImage } from "@/lib/cloudinary";
 import { prisma } from "@/lib/prisma";
+import { STATE_NOT_LIVE_MESSAGE } from "@/lib/service-areas/rules";
+import { isStateActive } from "@/lib/service-areas/server";
 import {
   aboutSchema,
   addPhotoSchema,
@@ -246,6 +248,20 @@ export async function saveLocationAction(
 
   const loaded = await loadEditable(businessId, session.id);
   if (loaded.error !== undefined) return { status: "error", message: loaded.error, values };
+
+  // New listings only in live states. A draft (or live listing) already in a state that was
+  // later switched off may keep that state and still be saved.
+  if (
+    parsed.data.stateId !== loaded.business.stateId &&
+    !(await isStateActive(parsed.data.stateId))
+  ) {
+    return {
+      status: "error",
+      message: STATE_NOT_LIVE_MESSAGE,
+      fieldErrors: { stateId: ["This state isn't open for new listings yet."] },
+      values,
+    };
+  }
 
   await prisma.business.update({
     where: { id: loaded.business.id },
@@ -563,6 +579,10 @@ export async function submitBusinessAction(
           ? SUSPENDED
           : "This listing has already been submitted. You'll be notified when it's reviewed.",
     };
+  }
+
+  if (business.stateId && !(await isStateActive(business.stateId))) {
+    return { status: "error", message: STATE_NOT_LIVE_MESSAGE };
   }
 
   const workPhotoCount = await prisma.businessPhoto.count({ where: { businessId } });

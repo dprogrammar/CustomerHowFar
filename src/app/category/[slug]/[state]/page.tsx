@@ -30,8 +30,8 @@ export async function generateMetadata({
     title: `${category.name} in ${state.name}`,
     description: `Find trusted ${category.name.toLowerCase()} in ${state.name}, Nigeria. See real work photos, opening hours and chat directly on WhatsApp.`,
     alternates: { canonical: `/category/${category.slug}/${state.slug}` },
-    // Don't ask search engines to index empty combinations.
-    robots: total === 0 ? { index: false, follow: true } : undefined,
+    // Only live states with listings are indexed (and in the sitemap).
+    robots: total === 0 || !state.isActive ? { index: false, follow: true } : undefined,
   };
 }
 

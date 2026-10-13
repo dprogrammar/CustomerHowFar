@@ -85,6 +85,11 @@ export default function PrivacyPage() {
           through the contact form.
         </li>
         <li>
+          <strong>Waitlist sign-ups:</strong> if you ask us to email you when we launch in your
+          state, we keep your email, your state, whether you&apos;re a customer or a business, your
+          name if you give it, and when you agreed.
+        </li>
+        <li>
           <strong>Technical data:</strong> our hosting provider keeps short-lived server logs. To
           stop abuse (for example contact form spam) we store a one-way scrambled version of your IP
           address for up to two days.
@@ -107,6 +112,10 @@ export default function PrivacyPage() {
           review).
         </li>
         <li>To show business owners how many people viewed and contacted them.</li>
+        <li>
+          To email you once when we launch in your state, if you joined the waitlist, and to see
+          which states people are waiting for.
+        </li>
       </ul>
       <p>We don&apos;t sell your personal data and we don&apos;t show third-party adverts.</p>
 
@@ -120,6 +129,10 @@ export default function PrivacyPage() {
           <strong>Consent:</strong> for the ID and selfie check. You give it with a checkbox before
           you submit, and you can withdraw it by withdrawing your submission or deleting your
           account.
+        </li>
+        <li>
+          <strong>Consent:</strong> for the waitlist. You tick a box when you join, and every
+          waitlist email has an unsubscribe link.
         </li>
         <li>
           <strong>Legitimate interests:</strong> to keep the site safe and trusted (moderation,
@@ -188,6 +201,11 @@ export default function PrivacyPage() {
           <strong>Payment records:</strong> kept for accounting. When you delete your account they
           are anonymized: we keep only the amount, date, reference, payment method and business
           name, and delete the receipt and your name, email and phone.
+        </li>
+        <li>
+          <strong>Waitlist sign-ups:</strong> until you delete your account. If you unsubscribe we
+          keep only a record so we don&apos;t email you again; deleting your account removes your
+          waitlist sign-ups completely.
         </li>
         <li>
           <strong>Scrambled IP addresses for rate limiting:</strong> up to two days.

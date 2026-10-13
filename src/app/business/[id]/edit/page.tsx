@@ -15,6 +15,8 @@ import {
 } from "@/lib/business/rules";
 import { getActiveCategories, getLgasGroupedByState, getStates } from "@/lib/data/catalog";
 import { getIdentityState } from "@/lib/identity/server";
+import { STATE_NOT_LIVE_MESSAGE } from "@/lib/service-areas/rules";
+import { isStateActive } from "@/lib/service-areas/server";
 import { FormAlert } from "@/components/auth/form-fields";
 import { BusinessPreview } from "@/components/business/business-preview";
 import { StatusBadge } from "@/components/business/status-badge";
@@ -158,6 +160,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
         businessId={business.id}
         states={states}
         lgasByState={lgasByState}
+        email={user.email}
         defaults={{
           stateId: business.stateId,
           lgaId: business.lgaId,
@@ -196,6 +199,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
   } else {
     const missing = missingItems(completeness);
     const { state: idState } = await getIdentityState(user.id);
+    const stateLive = business.stateId ? await isStateActive(business.stateId) : true;
     body = (
       <div className="space-y-6">
         <div>
@@ -223,6 +227,20 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
             </ul>
           </div>
         )}
+        {!stateLive && (
+          <div
+            role="alert"
+            className="rounded-xl bg-accent-50 p-4 text-sm text-accent-900 ring-1 ring-accent-200"
+          >
+            <p>{STATE_NOT_LIVE_MESSAGE}</p>
+            <p className="mt-2">
+              You can keep editing this listing.{" "}
+              <Link href="/coming-soon" className="font-semibold underline">
+                Join the waitlist
+              </Link>
+            </p>
+          </div>
+        )}
         {status === "PENDING_PAYMENT" ? (
           <Link
             href={`/business/${business.id}/pay`}
@@ -234,7 +252,7 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
           <SubmitListingForm
             businessId={business.id}
             resubmit={status === "REJECTED"}
-            disabled={missing.length > 0}
+            disabled={missing.length > 0 || !stateLive}
             idState={idState}
           />
         ) : (

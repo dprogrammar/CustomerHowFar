@@ -6,9 +6,10 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { searchHref, type SearchMode, type SearchValues } from "@/lib/search/url";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/input";
+import { StateOptions } from "@/components/service-areas/state-options";
 
 type Option = { slug: string; name: string };
-type StateOption = Option & { id: number };
+type StateOption = Option & { id: number; isActive: boolean };
 
 export type FiltersProps = {
   mode: SearchMode;
@@ -101,11 +102,7 @@ function FiltersForm({
           }}
         >
           <option value="">All of Nigeria</option>
-          {states.map((s) => (
-            <option key={s.slug} value={s.slug}>
-              {s.name}
-            </option>
-          ))}
+          <StateOptions states={states} valueOf={(s) => s.slug} />
         </Select>
       </div>
       <div>

@@ -35,6 +35,7 @@ export async function approveBusinessInTx(
       feeRequiredAtSubmit: true,
       slug: true,
       ownerId: true,
+      state: { select: { name: true, isActive: true } },
     },
   });
   if (!current) throw new StaleError();
@@ -51,6 +52,13 @@ export async function approveBusinessInTx(
         "Can't approve: this listing was submitted while the listing fee was on, and it has no successful payment.",
       );
     }
+  }
+  // Service areas: only listings in live states can be approved, unless the listing was
+  // already live before its state was switched off.
+  if (current.state && !current.state.isActive && !current.publishedAt) {
+    throw new RuleError(
+      `Can't approve: ${current.state.name} isn't a live state yet. Turn it on in Service areas first.`,
+    );
   }
   if (input.acceptIdentity) {
     const pending = await tx.identityVerification.findFirst({

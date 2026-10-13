@@ -33,9 +33,12 @@ export async function getActiveCategories(): Promise<CategoryListItem[]> {
   });
 }
 
-export type StateListItem = { id: number; slug: string; name: string };
+export type StateListItem = { id: number; slug: string; name: string; isActive: boolean };
 
-/** All 36 states and the FCT, alphabetical. */
+/**
+ * All 36 states and the FCT, alphabetical, with whether each is live (open for businesses).
+ * Toggling a state expires this cache (CATALOG_TAGS.locations).
+ */
 export async function getStates(): Promise<StateListItem[]> {
   "use cache";
   cacheLife("weeks");
@@ -43,8 +46,13 @@ export async function getStates(): Promise<StateListItem[]> {
 
   return prisma.state.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, slug: true, name: true },
+    select: { id: true, slug: true, name: true, isActive: true },
   });
+}
+
+/** Live states only, alphabetical. */
+export async function getActiveStates(): Promise<StateListItem[]> {
+  return (await getStates()).filter((s) => s.isActive);
 }
 
 export type LgaListItem = { id: number; slug: string; name: string };

@@ -6,6 +6,7 @@ import { FeaturedBusinesses } from "@/components/home/featured-businesses";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TrustSection } from "@/components/home/trust-section";
+import { WaitlistTeaser } from "@/components/home/waitlist-teaser";
 
 function StructuredData() {
   const url = getSiteUrl();
@@ -53,6 +54,7 @@ export default function Home() {
       <FeaturedBusinesses />
       <BusinessCta />
       <TrustSection />
+      <WaitlistTeaser />
     </>
   );
 }

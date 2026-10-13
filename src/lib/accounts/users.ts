@@ -229,6 +229,14 @@ export async function deleteUserAccount(input: {
       await tx.reviewReport.deleteMany({ where: { reporterId: p.id } });
       await tx.businessReport.deleteMany({ where: { reporterId: p.id } });
       await tx.contactEvent.deleteMany({ where: { userId: p.id } });
+      // Waitlist sign-ups, whether made while logged in or with the same email.
+      const { email } = await tx.profile.findUniqueOrThrow({
+        where: { id: p.id },
+        select: { email: true },
+      });
+      await tx.waitlistEntry.deleteMany({
+        where: { OR: [{ userId: p.id }, { email: email.toLowerCase() }] },
+      });
 
       await tx.adminAuditLog.create({
         data: {

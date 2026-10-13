@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { countOwnedBusinesses } from "@/lib/business/queries";
 import { MAX_BUSINESSES_PER_USER } from "@/lib/business/rules";
 import { getActiveCategories } from "@/lib/data/catalog";
+import { liveStatesText } from "@/components/service-areas/live-states";
 import { FormAlert } from "@/components/auth/form-fields";
 import { StepBasics } from "@/components/business/wizard/step-basics";
 import { WizardFrame, WizardSkeleton } from "@/components/business/wizard/wizard-frame";
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
 
 async function NewBusinessContent() {
   const user = await requireUser("/business/new");
-  const [count, categories] = await Promise.all([
+  const [count, categories, live] = await Promise.all([
     countOwnedBusinesses(user.id),
     getActiveCategories(),
+    liveStatesText(),
   ]);
 
   if (count >= MAX_BUSINESSES_PER_USER) {
@@ -45,6 +47,18 @@ async function NewBusinessContent() {
       description="It's free to start and takes about 5 minutes. Your progress is saved after each step."
       backToDashboard={count > 0}
     >
+      <p className="mb-5 rounded-lg bg-brand-50 p-3 text-sm text-brand-900 ring-1 ring-brand-200">
+        We&apos;re currently accepting businesses in {live.names}.
+        {!live.allLive && (
+          <>
+            {" "}
+            More states coming soon.{" "}
+            <Link href="/coming-soon" className="font-semibold underline">
+              Join the waitlist
+            </Link>
+          </>
+        )}
+      </p>
       <WizardProgress current={1} completed={{}} />
       <StepBasics businessId={null} categories={categories} />
     </WizardFrame>

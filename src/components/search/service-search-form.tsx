@@ -3,6 +3,7 @@ import { ROUTES } from "@/config/navigation";
 import { getStates } from "@/lib/data/catalog";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { StateOptions } from "@/components/service-areas/state-options";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,11 +51,7 @@ export async function ServiceSearchForm({ id, className }: { id: string; classNa
           className="border-transparent bg-muted shadow-none sm:bg-white"
         >
           <option value="">All of Nigeria</option>
-          {states.map((state) => (
-            <option key={state.slug} value={state.slug}>
-              {state.name}
-            </option>
-          ))}
+          <StateOptions states={states} valueOf={(s) => s.slug} />
         </Select>
       </div>
       <Button type="submit" size="lg" className="sm:px-8">

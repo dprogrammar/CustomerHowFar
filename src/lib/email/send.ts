@@ -10,6 +10,8 @@ export type EmailMessage = {
   tag: string;
   /** Where replies go (e.g. the sender of a contact form message). */
   replyTo?: { email: string; name?: string };
+  /** Extra headers, e.g. List-Unsubscribe for marketing-style emails. */
+  headers?: Record<string, string>;
 };
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
@@ -60,6 +62,7 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
         textContent: message.text,
         tags: [message.tag],
         ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        ...(message.headers ? { headers: message.headers } : {}),
       }),
       signal: AbortSignal.timeout(10_000),
     });

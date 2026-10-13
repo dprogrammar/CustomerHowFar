@@ -241,6 +241,7 @@ export async function getSitemapData() {
   "use cache";
   cacheLife("hours");
   cacheTag(PUBLIC_TAGS.businesses);
+  cacheTag(CATALOG_TAGS.locations);
   const [businesses, combos] = await Promise.all([
     prisma.business.findMany({
       where: { status: "APPROVED" },
@@ -252,7 +253,7 @@ export async function getSitemapData() {
       SELECT DISTINCT c.slug AS category_slug, s.slug AS state_slug
       FROM businesses b
       JOIN categories c ON c.id = b.category_id AND c.is_active
-      LEFT JOIN states s ON s.id = b.state_id
+      JOIN states s ON s.id = b.state_id AND s.is_active
       WHERE b.status = 'APPROVED'`,
   ]);
   return { businesses, combos };

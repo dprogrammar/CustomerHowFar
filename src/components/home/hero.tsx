@@ -3,6 +3,7 @@ import { BadgeCheck, MessageCircle, ShieldCheck } from "lucide-react";
 import { ROUTES } from "@/config/navigation";
 import { Container } from "@/components/ui/container";
 import { ServiceSearchForm } from "@/components/search/service-search-form";
+import { LiveStatesNote } from "@/components/service-areas/live-states";
 
 const POPULAR_SEARCHES = ["Tailor", "Electrician", "Plumber", "Hair stylist", "Mechanic"];
 
@@ -26,7 +27,7 @@ export function Hero() {
         <div className="mx-auto max-w-3xl text-center">
           <p className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-brand-50 ring-1 ring-white/15 sm:text-sm">
             <BadgeCheck aria-hidden="true" className="size-4 text-accent-300" />
-            Across all 36 states and the FCT
+            <LiveStatesNote />
           </p>
           <h1
             id="hero-title"

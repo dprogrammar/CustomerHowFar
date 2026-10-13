@@ -34,6 +34,10 @@ export const RATE_LIMITS = {
   "upload-sign": [{ windowSeconds: HOUR, max: 150 }],
   "identity-submit": [{ windowSeconds: HOUR, max: 10 }],
   "proof-submit": [{ windowSeconds: HOUR, max: 10 }],
+  waitlist: [
+    { windowSeconds: HOUR, max: 5 },
+    { windowSeconds: DAY, max: 20 },
+  ],
   track: [{ windowSeconds: 10 * MIN, max: 300 }],
   search: [{ windowSeconds: MIN, max: 60 }],
 } satisfies Record<string, Window[]>;

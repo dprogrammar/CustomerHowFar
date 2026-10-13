@@ -92,6 +92,7 @@ model Profile {
   reviewReports         ReviewReport[]         @relation("ReviewReporter")
   resolvedReviewReports ReviewReport[]         @relation("ReviewReportResolver")
   businessReports       BusinessReport[]       @relation("BusinessReporter")
+  waitlistEntries       WaitlistEntry[]
   resolvedBizReports    BusinessReport[]       @relation("BusinessReportResolver")
 
   @@index([status, createdAt(sort: Desc)])
@@ -129,15 +130,23 @@ model Category {
 }
 
 /// The 36 states plus the FCT.
+/// The 36 states plus the FCT. CustomerHowFar launches one state at a time: businesses can only
+/// list (and be approved) in ACTIVE states; customers can browse everywhere. At least one state
+/// is always active (enforced by a database trigger).
 model State {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  slug      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  slug       String    @unique
+  /// Open for new business listings ("Live"); false = "Coming soon".
+  isActive   Boolean   @default(false) @map("is_active")
+  /// When the state was (last) switched on.
+  launchedAt DateTime? @map("launched_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   lgas       Lga[]
   businesses Business[]
+  waitlist   WaitlistEntry[]
 
   @@map("states")
 }
@@ -586,6 +595,9 @@ enum AuditAction {
   USER_ROLE_CHANGED
   BUSINESS_DELETED
   BUSINESS_SELF_DELETED
+  STATE_ACTIVATED
+  STATE_DEACTIVATED
+  WAITLIST_NOTIFIED
   REVIEW_HIDDEN
   REVIEW_RESTORED
   REVIEW_REPORTS_DISMISSED
@@ -741,4 +753,44 @@ model JobRun {
   lastResult     Json?     @map("last_result")
 
   @@map("job_runs")
+}
+
+// ---------------------------------------------------------------------------
+// Service areas: waitlist for states that aren't live yet
+// ---------------------------------------------------------------------------
+
+enum WaitlistRole {
+  CUSTOMER
+  BUSINESS
+
+  @@map("waitlist_role")
+}
+
+/// Someone asking to be emailed when CustomerHowFar launches in a state. One entry per email
+/// per state. Deleted with the user's account (by user id or email).
+model WaitlistEntry {
+  id               String       @id @default(uuid(7)) @db.Uuid
+  /// Lowercased.
+  email            String
+  stateId          Int          @map("state_id")
+  name             String?
+  role             WaitlistRole
+  /// Set when the person was logged in when joining.
+  userId           String?      @map("user_id") @db.Uuid
+  consentAt        DateTime     @map("consent_at")
+  /// Random secret for the unsubscribe link (no login needed).
+  unsubscribeToken String       @unique @map("unsubscribe_token")
+  notifiedAt       DateTime?    @map("notified_at")
+  unsubscribedAt   DateTime?    @map("unsubscribed_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  state State    @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  user  Profile? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, stateId])
+  /// Waitlist counts and "email the waitlist" (not yet notified, still subscribed).
+  @@index([stateId, notifiedAt, unsubscribedAt])
+  @@index([userId])
+  @@map("waitlist_entries")
 }

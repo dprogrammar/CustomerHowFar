@@ -132,6 +132,20 @@ policies, so the public Supabase Data API cannot read or write anything.
 - `RateLimitHit`: generic rate-limit rows (key = purpose + user id or a keyed hash of the IP,
   never a raw IP). Pruned after two days by the daily job.
 
+### Service areas (state-by-state launch)
+
+- `State.isActive` ("Live") / `launchedAt`. At launch only Lagos is live. A database trigger
+  guarantees at least one state stays live; admins toggle states in /admin/service-areas (audit
+  logged: `STATE_ACTIVATED` / `STATE_DEACTIVATED`).
+- Businesses can only be placed in, submitted in, or approved in live states (checked on the
+  server). A draft already in a state that was switched off can still be edited/saved but not
+  submitted; listings that were already live stay live (and can be reinstated).
+- Customers browse everywhere; inactive states are shown as "Coming soon" with a waitlist.
+  Category-in-state pages for inactive states are noindex and left out of the sitemap.
+- `WaitlistEntry`: one per email per state (email lowercased), role CUSTOMER/BUSINESS, consent
+  time, unsubscribe token, `notifiedAt`, `unsubscribedAt`. Launch emails go out in small
+  batches and are recorded, so nobody is emailed twice. Deleted with the user's account.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and
