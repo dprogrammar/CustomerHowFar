@@ -15,6 +15,9 @@ export function ForgotPasswordForm() {
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
+      {state.status === "error" && state.message && (
+        <FormAlert status="error">{state.message}</FormAlert>
+      )}
       <TextField
         label="Email address"
         name="email"

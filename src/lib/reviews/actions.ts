@@ -8,14 +8,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
 import { notifyAdminOfListingReport, notifyNewReview } from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
-import { takeRateLimit } from "@/lib/rate-limit";
+import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import {
   LISTING_REPORT_REASONS,
   OWNER_REPLY_MAX,
-  REPORT_RATE_LIMITS,
   REVIEW_COMMENT_MAX,
   REVIEW_COMMENT_MIN,
-  REVIEW_RATE_LIMITS,
   REVIEW_REPORT_REASONS,
   type ListingReportReasonValue,
   type ReviewReportReasonValue,
@@ -78,12 +76,8 @@ export async function saveReviewAction(
   if (!business) return { ok: false, error: "We couldn't find that business." };
   const eligibility = await getReviewEligibility(user.id, business);
   if (!eligibility.ok) return { ok: false, error: ELIGIBILITY_MESSAGES[eligibility.reason] };
-  if (!(await takeRateLimit(`review:${user.id}`, REVIEW_RATE_LIMITS))) {
-    return {
-      ok: false,
-      error: "You've written a lot of reviews recently. Please try again later.",
-    };
-  }
+  const limited = await rateLimit("review", user.id);
+  if (!limited.ok) return { ok: false, error: tooManyMessage(limited) };
 
   const outcome = await prisma.$transaction(async (tx) => {
     await lockBusinessForReviews(tx, businessId);
@@ -188,9 +182,8 @@ export async function reportReviewAction(
   });
   if (!review) return { ok: false, error: "We couldn't find that review." };
   if (review.userId === user.id) return { ok: false, error: "You can't report your own review." };
-  if (!(await takeRateLimit(`report:${user.id}`, REPORT_RATE_LIMITS))) {
-    return { ok: false, error: "You've sent a lot of reports today. Please try again tomorrow." };
-  }
+  const limited = await rateLimit("report", user.id);
+  if (!limited.ok) return { ok: false, error: tooManyMessage(limited) };
   try {
     await prisma.reviewReport.create({
       data: { reviewId: review.id, reporterId: user.id, reason: parsed.data.reason },
@@ -240,9 +233,8 @@ export async function reportListingAction(
   if (business.ownerId === user.id) {
     return { ok: false, error: "You can't report your own business." };
   }
-  if (!(await takeRateLimit(`report:${user.id}`, REPORT_RATE_LIMITS))) {
-    return { ok: false, error: "You've sent a lot of reports today. Please try again tomorrow." };
-  }
+  const limited = await rateLimit("report", user.id);
+  if (!limited.ok) return { ok: false, error: tooManyMessage(limited) };
   let reportId: string;
   try {
     const report = await prisma.businessReport.create({

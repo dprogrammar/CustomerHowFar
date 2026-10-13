@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Settings,
+  Activity,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -65,6 +66,12 @@ const ITEMS: {
     href: "/admin/settings",
     icon: Settings,
     match: (p) => p.startsWith("/admin/settings"),
+  },
+  {
+    label: "System",
+    href: "/admin/system",
+    icon: Activity,
+    match: (p) => p.startsWith("/admin/system"),
   },
 ];
 

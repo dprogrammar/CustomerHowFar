@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ResultsSkeleton } from "@/components/search/results-skeleton";
 import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { readParam } from "@/lib/search/url";
@@ -75,9 +76,7 @@ export default function SearchPage({ searchParams }: PageProps<"/search">) {
   return (
     <div className="flex-1 bg-surface py-6 sm:py-10">
       <Container>
-        <Suspense
-          fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}
-        >
+        <Suspense fallback={<ResultsSkeleton />}>
           <Results searchParams={searchParams} />
         </Suspense>
       </Container>

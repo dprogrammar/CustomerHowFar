@@ -727,3 +727,18 @@ model RateLimitHit {
   @@index([createdAt])
   @@map("rate_limit_hits")
 }
+
+/// Background job bookkeeping (e.g. the daily job), shown by /api/health. Counts only.
+model JobRun {
+  name           String    @id
+  lastStartedAt  DateTime? @map("last_started_at")
+  lastSuccessAt  DateTime? @map("last_success_at")
+  lastFailureAt  DateTime? @map("last_failure_at")
+  /// Error class name only (never messages, which could contain data).
+  lastError      String?   @map("last_error")
+  lastDurationMs Int?      @map("last_duration_ms")
+  /// Counts from the last successful run.
+  lastResult     Json?     @map("last_result")
+
+  @@map("job_runs")
+}

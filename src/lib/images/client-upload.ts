@@ -90,6 +90,10 @@ async function getSignature(kind: UploadKind): Promise<Signature> {
   if (cached && Date.now() - cached.fetchedAt < SIGNATURE_REUSE_MS) return cached.value;
   const res = await fetch(SIGN_ENDPOINTS[kind], { method: "POST" });
   if (res.status === 401) throw new Error("Your session has expired. Please log in again.");
+  if (res.status === 429) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "Too many attempts. Please wait a few minutes and try again.");
+  }
   if (!res.ok) throw new Error("Uploads are unavailable right now. Please try again shortly.");
   const value = (await res.json()) as Signature;
   cachedSignatures.set(kind, { value, fetchedAt: Date.now() });

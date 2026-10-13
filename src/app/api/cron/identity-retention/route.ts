@@ -1,7 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { runIdentityRetention } from "@/lib/identity/server";
-import { pruneRateLimits } from "@/lib/rate-limit";
-import { processPendingFileDeletions } from "@/lib/storage/cleanup";
+import { runDailyJob } from "@/lib/jobs/daily";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
@@ -14,21 +12,14 @@ function authorized(request: Request) {
 }
 
 /**
- * Daily Vercel Cron (see vercel.json): deletes ID and selfie images that are due under the
- * retention policy, and retries queued Cloudinary deletions. Vercel sends `Authorization: Bearer $CRON_SECRET`; anything else gets a 404.
- * Responds with counts only, never names or file IDs.
+ * Older path of the daily job, kept so existing schedules keep working. Runs the full daily
+ * job (see /api/cron/daily) and reports the identity-retention counts at the top level.
  */
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("Not found", { status: 404, headers: NO_STORE });
   try {
-    const result = await runIdentityRetention();
-    // Also retry Cloudinary deletions that failed earlier (deleted businesses and accounts).
-    const files = await processPendingFileDeletions();
-    const rateLimitRowsPruned = await pruneRateLimits();
-    return Response.json(
-      { ok: true, ...result, files, rateLimitRowsPruned },
-      { headers: NO_STORE },
-    );
+    const { identity, ...rest } = await runDailyJob();
+    return Response.json({ ok: true, ...identity, ...rest }, { headers: NO_STORE });
   } catch (error) {
     console.error(
       "[cron/identity-retention] failed:",

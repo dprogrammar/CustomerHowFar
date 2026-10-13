@@ -8,6 +8,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { deletePrivateFile, sealPrivateFile, verifyPrivateUpload } from "@/lib/cloudinary";
 import { notifyAdminOfIdentity } from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { MAX_SUBMISSIONS_PER_DAY } from "./rules";
 import { deleteIdentityImages } from "./server";
 
@@ -80,6 +81,12 @@ export async function submitIdentityAction(input: SubmitInput): Promise<Identity
       error: "Please upload a selfie holding your ID.",
       fieldErrors: { selfiePublicId: ["Upload a selfie holding your ID."] },
     };
+  }
+
+  const burst = await rateLimit("identity-submit", session.id);
+  if (!burst.ok) {
+    await discard(session.id, uploaded);
+    return { ok: false, error: tooManyMessage(burst) };
   }
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);

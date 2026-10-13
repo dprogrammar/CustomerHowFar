@@ -5,12 +5,6 @@ export const REVIEW_COMMENT_MAX = 1000;
 export const OWNER_REPLY_MAX = 1000;
 /** "Highest rated" sort: businesses with at least this many reviews rank first. */
 export const MIN_REVIEWS_FOR_RANKING = 3;
-/** Review submissions (new reviews and edits) per user. */
-export const REVIEW_RATE_LIMITS = [
-  { windowSeconds: 60 * 60, max: 5 },
-  { windowSeconds: 24 * 60 * 60, max: 20 },
-];
-export const REPORT_RATE_LIMITS = [{ windowSeconds: 24 * 60 * 60, max: 20 }];
 
 export const REVIEW_REPORT_REASONS = [
   { value: "FAKE", label: "Fake review" },

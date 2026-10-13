@@ -43,3 +43,22 @@ src/
   lib/          Utilities and shared logic
   types/        Shared TypeScript types
 ```
+
+## Operations
+
+- **Daily job** (`/api/cron/daily`, Vercel Cron at 03:00 UTC, protected by `CRON_SECRET`): ID
+  image retention, retries of failed file deletions, rate-limit cleanup and orphaned-upload
+  cleanup. It also queries the database, which keeps the free Supabase project from pausing.
+  `/api/health` shows when it last succeeded; admins can see it at `/admin/system`.
+- **Orphaned uploads**: files in `customerhowfar/{users,proofs,identity}/` that no record
+  references and that are older than 24 hours are deleted in small batches. Dry run:
+  `GET /api/cron/daily?task=orphans&dryRun=1` with the cron secret.
+- **Rate limits**: one database-backed limiter (`src/lib/rate-limit.ts`, all limits in one
+  table). IPs and emails are stored only as keyed hashes.
+- **Security headers**: set in `next.config.ts` (static CSP without nonces so pages stay
+  static; HSTS, nosniff, Referrer-Policy, Permissions-Policy, frame-ancestors 'none').
+- **Error monitoring**: Sentry, only when `NEXT_PUBLIC_SENTRY_DSN` is set. Personal data is
+  scrubbed (`src/lib/monitoring/scrub.ts`); no session replay or tracing; the browser SDK is
+  loaded only when an error happens. Source maps upload only with `SENTRY_AUTH_TOKEN`.
+- **PWA**: manifest + icons, `public/sw.js` caches only hashed static assets and icons and shows
+  `public/offline.html` when offline. Pages, API responses and personal data are never cached.

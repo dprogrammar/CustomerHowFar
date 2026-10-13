@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { getSiteUrl, siteConfig } from "@/config/site";
 import { Suspense } from "react";
+import { preconnect } from "react-dom";
 import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
+import { InstallPrompt, ServiceWorkerRegistration } from "@/components/layout/pwa";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import "./globals.css";
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: [...siteConfig.keywords],
   applicationName: siteConfig.name,
+  appleWebApp: { capable: true, title: "HowFar", statusBarStyle: "default" },
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
@@ -47,6 +50,8 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Most pages show Cloudinary images first: open that connection early on slow networks.
+  preconnect("https://res.cloudinary.com");
   return (
     <html lang="en-NG" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col pb-[calc(var(--spacing-bottom-nav)+env(safe-area-inset-bottom))] md:pb-0">
@@ -64,6 +69,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<BottomNavView pathname={null} />}>
           <BottomNav />
         </Suspense>
+        <ServiceWorkerRegistration />
+        <InstallPrompt />
       </body>
     </html>
   );

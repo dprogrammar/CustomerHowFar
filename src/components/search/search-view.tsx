@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Lightbulb, X } from "lucide-react";
+import { headers } from "next/headers";
+import { connection } from "next/server";
 import { searchBusinesses, SEARCH_SORTS, type SearchSort } from "@/lib/business/public";
+import { ipKey, rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import {
   getActiveCategories,
   getLgasGroupedByState,
@@ -56,6 +59,26 @@ export async function SearchView({
     sort,
     page,
   };
+
+  // Text searches are the expensive part: limit them per IP (category browsing is cached).
+  if (mode.kind === "search" && values.q) {
+    // Per-request work (it reads the clock): never part of a prerender.
+    await connection();
+    const limited = await rateLimit("search", ipKey(await headers()));
+    if (!limited.ok) {
+      return (
+        <div className="py-6">
+          {heading}
+          <p
+            role="status"
+            className="mt-6 rounded-xl bg-accent-50 p-4 text-sm text-accent-900 ring-1 ring-accent-200"
+          >
+            {tooManyMessage(limited)}
+          </p>
+        </div>
+      );
+    }
+  }
 
   const result = await searchBusinesses({
     q: values.q,

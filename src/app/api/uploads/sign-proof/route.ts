@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/lib/auth/session";
+import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { createProofUploadSignature } from "@/lib/cloudinary";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
@@ -11,6 +12,10 @@ export async function POST() {
   const user = await getSessionUser();
   if (!user) {
     return Response.json({ error: "Please log in to upload." }, { status: 401, headers: NO_STORE });
+  }
+  const limited = await rateLimit("upload-sign", user.id);
+  if (!limited.ok) {
+    return Response.json({ error: tooManyMessage(limited) }, { status: 429, headers: NO_STORE });
   }
   try {
     return Response.json(createProofUploadSignature(user.id), { headers: NO_STORE });

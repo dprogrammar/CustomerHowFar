@@ -9,6 +9,7 @@ import { findOwnedBusiness, hasSuccessfulPayment } from "@/lib/business/queries"
 import { deleteProof, sealProof, verifyUploadedProof } from "@/lib/cloudinary";
 import { notifyAdminOfTransferProof, notifyProofReceived } from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { getPaymentConfig, newPaymentReference } from "./config";
 import { PAYMENT_METHODS } from "./methods";
 
@@ -141,6 +142,11 @@ export async function submitTransferProofAction(
     return { ok: false, error: loaded.error! };
   }
   const { session, business } = loaded;
+  const burst = await rateLimit("proof-submit", session.id);
+  if (!burst.ok) {
+    await deleteOwnProof(data.proofPublicId);
+    return { ok: false, error: tooManyMessage(burst) };
+  }
 
   // Must be a private file in this user's proof folder, jpg/png/webp/pdf, at most 5 MB.
   const proof = await verifyUploadedProof(data.proofPublicId, session.id);

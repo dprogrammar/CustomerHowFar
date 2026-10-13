@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { getLastDailyJob } from "@/lib/jobs/daily";
 import { prisma } from "@/lib/prisma";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
@@ -16,8 +17,15 @@ export async function GET() {
       throw new Error("AppSetting row is missing; run npm run db:seed.");
     }
 
+    const job = await getLastDailyJob();
     return Response.json(
-      { status: "ok", database: "connected", paymentRequired: setting.paymentRequired },
+      {
+        status: "ok",
+        database: "connected",
+        paymentRequired: setting.paymentRequired,
+        // When the daily maintenance job (which also keeps the database awake) last succeeded.
+        dailyJob: { lastSuccessAt: job?.lastSuccessAt?.toISOString() ?? null },
+      },
       { headers: NO_STORE },
     );
   } catch (error) {

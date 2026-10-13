@@ -1,10 +1,19 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSiteUrl } from "@/config/site";
 import { prisma } from "@/lib/prisma";
+import {
+  emailKey,
+  ipKey,
+  isRateLimited,
+  rateLimit,
+  recordRateLimitHit,
+  tooManyMessage,
+} from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import {
   forgotPasswordSchema,
@@ -57,9 +66,23 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { status: "error", fieldErrors: fieldErrorsOf(parsed.error), values };
   }
 
+  // Only failed attempts count, per IP and per email (hashed).
+  const ip = ipKey(await headers());
+  const email = emailKey(parsed.data.email);
+  for (const check of [
+    await isRateLimited("login-ip", ip),
+    await isRateLimited("login-email", email),
+  ]) {
+    if (!check.ok) return { status: "error", message: tooManyMessage(check), values };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error || !data.user) {
+    if (error?.code === "invalid_credentials") {
+      await recordRateLimitHit("login-ip", ip);
+      await recordRateLimitHit("login-email", email);
+    }
     return {
       status: "error",
       message: authErrorMessage(error, "login"),
@@ -103,6 +126,8 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
   }
 
   const { email, password, fullName } = parsed.data;
+  const signupLimit = await rateLimit("signup-ip", ipKey(await headers()));
+  if (!signupLimit.ok) return { status: "error", message: tooManyMessage(signupLimit), values };
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -138,6 +163,12 @@ export async function resendConfirmationAction(
 ): Promise<FormState> {
   const parsed = forgotPasswordSchema.safeParse({ email: text(formData, "email") });
   if (!parsed.success) return { status: "error", message: "Enter a valid email address." };
+  for (const check of [
+    await rateLimit("resend-ip", ipKey(await headers())),
+    await rateLimit("resend-email", emailKey(parsed.data.email)),
+  ]) {
+    if (!check.ok) return { status: "error", message: tooManyMessage(check) };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({
@@ -163,6 +194,13 @@ export async function forgotPasswordAction(
   const parsed = forgotPasswordSchema.safeParse(values);
   if (!parsed.success) {
     return { status: "error", fieldErrors: fieldErrorsOf(parsed.error), values };
+  }
+
+  for (const check of [
+    await rateLimit("forgot-ip", ipKey(await headers())),
+    await rateLimit("forgot-email", emailKey(parsed.data.email)),
+  ]) {
+    if (!check.ok) return { status: "error", message: tooManyMessage(check), values };
   }
 
   const supabase = await createClient();

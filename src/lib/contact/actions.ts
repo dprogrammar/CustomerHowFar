@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { OPERATOR } from "@/config/legal";
 import { sendContactMessage } from "@/lib/email/notifications";
-import { ipKey, takeRateLimit } from "@/lib/rate-limit";
+import { ipKey, rateLimit, tooManyMessage } from "@/lib/rate-limit";
 
 // Contact form. Spam protection: a hidden honeypot field (bots fill it in; people never see
 // it) and a per-IP rate limit (the IP is stored only as a keyed hash).
@@ -26,11 +26,6 @@ const schema = z.object({
     .min(20, "Please write at least 20 characters.")
     .max(3000, "Use 3000 characters or fewer."),
 });
-
-const LIMITS = [
-  { windowSeconds: 60 * 60, max: 3 },
-  { windowSeconds: 24 * 60 * 60, max: 10 },
-];
 
 const text = (form: FormData, key: string) => {
   const v = form.get(key);
@@ -57,10 +52,11 @@ export async function contactAction(_prev: ContactState, form: FormData): Promis
       values,
     };
   }
-  if (!(await takeRateLimit(`contact:${ipKey(await headers())}`, LIMITS))) {
+  const limited = await rateLimit("contact", ipKey(await headers()));
+  if (!limited.ok) {
     return {
       status: "error",
-      message: `You've sent several messages recently. Please try again later, or email us at ${OPERATOR.email}.`,
+      message: `${tooManyMessage(limited)} You can also email us at ${OPERATOR.email}.`,
       values,
     };
   }

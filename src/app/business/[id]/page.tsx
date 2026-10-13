@@ -66,8 +66,9 @@ async function BusinessRoute({ params }: Pick<PageProps<"/business/[id]">, "para
 }
 
 function ProfileSkeleton() {
+  // At least a screen tall so the footer stays below the fold while the page streams in.
   return (
-    <div aria-hidden="true">
+    <div aria-hidden="true" className="min-h-[100svh]">
       <div className="aspect-[16/7] max-h-[22rem] w-full animate-pulse bg-muted sm:aspect-[16/5]" />
       <Container className="space-y-4 py-6">
         <div className="size-20 animate-pulse rounded-2xl bg-muted" />

@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/lib/auth/session";
+import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { createImageUploadSignature } from "@/lib/cloudinary";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
@@ -16,8 +17,11 @@ export async function POST() {
       { status: 401, headers: NO_STORE },
     );
   }
-  // TODO(rate-limit): limit signatures per user before opening uploads to everyone.
 
+  const limited = await rateLimit("upload-sign", user.id);
+  if (!limited.ok) {
+    return Response.json({ error: tooManyMessage(limited) }, { status: 429, headers: NO_STORE });
+  }
   try {
     return Response.json(createImageUploadSignature(user.id), { headers: NO_STORE });
   } catch (error) {

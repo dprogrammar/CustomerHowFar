@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isProbablyBot } from "@/lib/bots";
 import { prisma } from "@/lib/prisma";
+import { ipKey, rateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   businessId: z.uuid(),
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
   const dedupeCookie = `${cookieName}=1; Max-Age=${DEDUPE_SECONDS[kind]}; Path=/api/track; HttpOnly; SameSite=Strict${
     request.nextUrl.protocol === "https:" ? "; Secure" : ""
   }`;
+
+  // Floods from one IP are dropped silently (analytics only).
+  if (!(await rateLimit("track", ipKey(request.headers))).ok) return noContent();
 
   const viewer = await getCurrentUser().catch(() => null);
   if (viewer?.role === "ADMIN") return noContent();
