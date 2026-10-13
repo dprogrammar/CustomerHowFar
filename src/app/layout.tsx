@@ -29,12 +29,10 @@ export const metadata: Metadata = {
   ...(APP_INSTALL_ENABLED
     ? { appleWebApp: { capable: true, title: "HowFar", statusBarStyle: "default" as const } }
     : {}),
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: siteConfig.name,
     locale: siteConfig.locale,
-    url: "/",
     title: `${siteConfig.name} - Find trusted artisans and businesses near you`,
     description: siteConfig.description,
   },

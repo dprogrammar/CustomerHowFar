@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ROUTES } from "@/config/navigation";
 import { getSiteUrl, siteConfig } from "@/config/site";
 import { BusinessCta } from "@/components/home/business-cta";
@@ -7,6 +8,10 @@ import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TrustSection } from "@/components/home/trust-section";
 import { WaitlistTeaser } from "@/components/home/waitlist-teaser";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 function StructuredData() {
   const url = getSiteUrl();

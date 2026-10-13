@@ -16,6 +16,19 @@ const supabaseOrigin = originOf(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const sentryOrigin = originOf(process.env.NEXT_PUBLIC_SENTRY_DSN);
 
 /**
+ * Custom domain. In PRODUCTION builds only (VERCEL_ENV is "production" when Vercel builds the
+ * production deployment; preview deployments get "preview"), visits to the old vercel.app address
+ * are permanently redirected (308) to the same path on the custom domain. /api/* is never
+ * redirected, so the cron job, health check, tracking and webhooks keep working there too.
+ */
+const LEGACY_HOSTS = ["customer-how-far.vercel.app"];
+const siteOrigin = originOf(process.env.NEXT_PUBLIC_SITE_URL);
+const redirectLegacyHosts =
+  process.env.VERCEL_ENV === "production" &&
+  siteOrigin !== null &&
+  !LEGACY_HOSTS.includes(new URL(siteOrigin).host);
+
+/**
  * Content-Security-Policy. A static policy (no per-request nonce) so static and partially
  * prerendered pages stay static and cacheable. Inline scripts are allowed because Next.js
  * inlines its bootstrap/RSC payload scripts; everything else is limited to our own origin and
@@ -80,6 +93,23 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async redirects() {
+    if (!redirectLegacyHosts) return [];
+    return LEGACY_HOSTS.flatMap((host) => [
+      {
+        source: "/",
+        has: [{ type: "host" as const, value: host }],
+        destination: `${siteOrigin}/`,
+        permanent: true,
+      },
+      {
+        source: "/:path((?!api/).+)",
+        has: [{ type: "host" as const, value: host }],
+        destination: `${siteOrigin}/:path`,
+        permanent: true,
+      },
+    ]);
   },
   async headers() {
     return [
