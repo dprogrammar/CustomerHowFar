@@ -60,5 +60,7 @@ src/
 - **Error monitoring**: Sentry, only when `NEXT_PUBLIC_SENTRY_DSN` is set. Personal data is
   scrubbed (`src/lib/monitoring/scrub.ts`); no session replay or tracing; the browser SDK is
   loaded only when an error happens. Source maps upload only with `SENTRY_AUTH_TOKEN`.
-- **PWA**: manifest + icons, `public/sw.js` caches only hashed static assets and icons and shows
-  `public/offline.html` when offline. Pages, API responses and personal data are never cached.
+- **App installation is OFF** (`src/config/pwa.ts`): the manifest uses `"display": "browser"`
+  so the site isn't installable (some Android browsers wrap installable sites in APKs that Play
+  Protect flags). `public/sw.js` only cleans up workers/caches from earlier versions. The old
+  caching worker, offline page and re-enable steps are in `pwa/`.

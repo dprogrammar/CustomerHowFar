@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { APP_INSTALL_ENABLED } from "@/config/pwa";
 import { siteConfig } from "@/config/site";
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -10,8 +11,10 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "en-NG",
     start_url: "/",
     scope: "/",
-    display: "standalone",
-    orientation: "portrait",
+    // "browser" means "not installable": no install prompt or Android APK. Name, icons and theme
+    // colour still look good in tabs and bookmarks. See src/config/pwa.ts.
+    display: APP_INSTALL_ENABLED ? "standalone" : "browser",
+    ...(APP_INSTALL_ENABLED ? { orientation: "portrait" as const } : {}),
     background_color: "#ffffff",
     theme_color: "#008751",
     categories: ["business", "lifestyle", "shopping"],
@@ -32,9 +35,13 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
     ],
-    shortcuts: [
-      { name: "Find a business", short_name: "Search", url: "/search" },
-      { name: "My businesses", short_name: "My businesses", url: "/dashboard" },
-    ],
+    ...(APP_INSTALL_ENABLED
+      ? {
+          shortcuts: [
+            { name: "Find a business", short_name: "Search", url: "/search" },
+            { name: "My businesses", short_name: "My businesses", url: "/dashboard" },
+          ],
+        }
+      : {}),
   };
 }

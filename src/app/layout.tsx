@@ -4,7 +4,8 @@ import { getSiteUrl, siteConfig } from "@/config/site";
 import { Suspense } from "react";
 import { preconnect } from "react-dom";
 import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
-import { InstallPrompt, ServiceWorkerRegistration } from "@/components/layout/pwa";
+import { PwaSupport } from "@/components/layout/pwa";
+import { APP_INSTALL_ENABLED } from "@/config/pwa";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import "./globals.css";
@@ -24,7 +25,10 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: [...siteConfig.keywords],
   applicationName: siteConfig.name,
-  appleWebApp: { capable: true, title: "HowFar", statusBarStyle: "default" },
+  // iOS "web app" mode only when installation is enabled (src/config/pwa.ts).
+  ...(APP_INSTALL_ENABLED
+    ? { appleWebApp: { capable: true, title: "HowFar", statusBarStyle: "default" as const } }
+    : {}),
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
@@ -69,8 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<BottomNavView pathname={null} />}>
           <BottomNav />
         </Suspense>
-        <ServiceWorkerRegistration />
-        <InstallPrompt />
+        <PwaSupport />
       </body>
     </html>
   );

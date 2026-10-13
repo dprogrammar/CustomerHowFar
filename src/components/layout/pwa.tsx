@@ -2,8 +2,50 @@
 
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+import { APP_INSTALL_ENABLED } from "@/config/pwa";
 
-/** Registers the service worker (production only). */
+/**
+ * App installation support. Installation is OFF for now (src/config/pwa.ts): only the clean-up
+ * runs, removing service workers and caches left by earlier versions of the site.
+ */
+export function PwaSupport() {
+  if (!APP_INSTALL_ENABLED) return <ServiceWorkerCleanup />;
+  return (
+    <>
+      <ServiceWorkerRegistration />
+      <InstallPrompt />
+    </>
+  );
+}
+
+/** Unregisters any service worker and deletes its caches (left by earlier versions). */
+export function ServiceWorkerCleanup() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const deleteCaches = async () => {
+      if (!("caches" in window)) return;
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k.startsWith("chf-")).map((k) => caches.delete(k)));
+    };
+    const clean = async () => {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      if (registrations.length === 0) return deleteCaches();
+      await Promise.all(registrations.map((r) => r.unregister()));
+      await deleteCaches();
+    };
+    const ignore = () => {
+      // Nothing to do: the site works with or without it.
+    };
+    clean().catch(ignore);
+    // An old worker keeps controlling this page until the next navigation and may re-cache
+    // files that are still loading, so sweep the caches once more shortly after.
+    const timer = setTimeout(() => deleteCaches().catch(ignore), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+  return null;
+}
+
+/** Registers the service worker (production only; used when installation is enabled). */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
@@ -36,7 +78,7 @@ function storage(op: "get" | "set") {
 }
 
 /**
- * Polite "Install app" offer for Android/Chromium: shown once, a little while after the
+ * (Used only when installation is enabled.) Polite "Install app" offer for Android/Chromium: shown once, a little while after the
  * browser says the app can be installed, never on top of a business page's contact bar.
  * iPhone users get instructions on /help instead (Safari has no install prompt).
  */

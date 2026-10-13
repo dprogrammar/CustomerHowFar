@@ -85,25 +85,6 @@ const CUSTOMER_FAQS: Faq[] = [
     ),
   },
   {
-    id: "install-app",
-    q: "Can I install CustomerHowFar like an app?",
-    a: (
-      <>
-        <p>Yes. It opens from your home screen like an app and uses very little storage.</p>
-        <p>
-          <strong>Android (Chrome):</strong> tap <strong>Install</strong> if you see the
-          &ldquo;Install the HowFar app&rdquo; message, or open the browser menu (⋮) and tap{" "}
-          <strong>Install app</strong> or <strong>Add to Home screen</strong>.
-        </p>
-        <p>
-          <strong>iPhone (Safari):</strong> tap the <strong>Share</strong> button (the square with
-          an arrow pointing up), scroll down, tap <strong>Add to Home Screen</strong>, then tap{" "}
-          <strong>Add</strong>.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "report-a-problem",
     q: "How do I report a problem?",
     a: (
