@@ -75,7 +75,12 @@ export async function getPublicBusiness(slug: string): Promise<PublicBusiness | 
 /** Any-status business by slug, for owner/admin previews. Never cached. */
 export async function getBusinessForPreview(slug: string): Promise<PublicBusiness | null> {
   if (!SLUG.test(slug) || slug.length > 120) return null;
-  return toPublic(await prisma.business.findUnique({ where: { slug }, select: publicSelect }));
+  return toPublic(
+    await prisma.business.findFirst({
+      where: { slug, status: { not: "DELETED" } },
+      select: publicSelect,
+    }),
+  );
 }
 
 // --- Cards --------------------------------------------------------------------------------

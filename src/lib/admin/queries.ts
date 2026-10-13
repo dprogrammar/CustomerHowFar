@@ -13,6 +13,7 @@ export const ADMIN_TABS = [
   { key: "rejected", label: "Changes requested" },
   { key: "suspended", label: "Suspended" },
   { key: "drafts", label: "Drafts" },
+  { key: "deleted", label: "Deleted" },
 ] as const;
 
 export type AdminTab = (typeof ADMIN_TABS)[number]["key"];
@@ -29,6 +30,8 @@ const TAB_WHERE: Record<AdminTab, Prisma.BusinessWhereInput> = {
   rejected: { status: "REJECTED" },
   suspended: { status: "SUSPENDED" },
   drafts: { status: "DRAFT" },
+  // Minimal records kept for accounting (businesses with payments).
+  deleted: { status: "DELETED" },
 };
 
 const TAB_ORDER: Record<AdminTab, Prisma.BusinessOrderByWithRelationInput[]> = {
@@ -40,14 +43,16 @@ const TAB_ORDER: Record<AdminTab, Prisma.BusinessOrderByWithRelationInput[]> = {
   rejected: [{ updatedAt: "desc" }],
   suspended: [{ updatedAt: "desc" }],
   drafts: [{ updatedAt: "desc" }],
+  deleted: [{ deletedAt: "desc" }],
 };
 
 export async function getAdminOverview() {
-  const [byStatus, recheck, users, identity] = await Promise.all([
+  const [byStatus, recheck, users, identity, suspendedUsers] = await Promise.all([
     prisma.business.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.business.count({ where: TAB_WHERE.recheck }),
-    prisma.profile.count(),
+    prisma.profile.count({ where: { status: { not: "DELETED" } } }),
     prisma.identityVerification.count({ where: { status: "PENDING" } }),
+    prisma.profile.count({ where: { status: "SUSPENDED" } }),
   ]);
   const count = (status: string) => byStatus.find((s) => s.status === status)?._count._all ?? 0;
   return {
@@ -58,8 +63,10 @@ export async function getAdminOverview() {
     rejected: count("REJECTED"),
     suspended: count("SUSPENDED"),
     drafts: count("DRAFT"),
+    deleted: count("DELETED"),
     users,
     identity,
+    suspendedUsers,
   };
 }
 
@@ -126,7 +133,15 @@ export async function getAdminBusiness(id: string) {
     where: { id },
     include: {
       owner: {
-        select: { id: true, fullName: true, email: true, phone: true, createdAt: true, role: true },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          createdAt: true,
+          role: true,
+          status: true,
+        },
       },
       category: { select: { name: true, icon: true } },
       state: { select: { name: true } },

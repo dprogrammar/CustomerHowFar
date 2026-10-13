@@ -18,7 +18,8 @@ const MESSAGES: Record<string, string> = {
   email_address_not_authorized:
     "We couldn't send an email to this address right now. Please try again later.",
   otp_expired: "This link has expired or has already been used. Please request a new one.",
-  user_banned: "This account has been suspended. Contact support for help.",
+  user_banned:
+    "This account has been suspended, so you can't log in. If you think this is a mistake, contact support.",
   signup_disabled: "New sign-ups are temporarily closed. Please try again later.",
 };
 

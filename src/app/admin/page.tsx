@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Store,
   Users,
+  UserX,
   type LucideIcon,
 } from "lucide-react";
 import { getAdminOverview } from "@/lib/admin/queries";
@@ -76,7 +77,13 @@ async function Overview() {
       icon: ShieldAlert,
     },
     { label: "Drafts", value: c.drafts, href: "/admin/listings?tab=drafts", icon: FilePen },
-    { label: "Total users", value: c.users, icon: Users },
+    { label: "Users", value: c.users, href: "/admin/users", icon: Users },
+    {
+      label: "Suspended users",
+      value: c.suspendedUsers,
+      href: "/admin/users?status=SUSPENDED",
+      icon: UserX,
+    },
   ];
 
   return (

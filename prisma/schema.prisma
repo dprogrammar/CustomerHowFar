@@ -44,17 +44,33 @@ enum Role {
   @@map("role")
 }
 
+/// ACTIVE: normal. SUSPENDED: blocked by an admin (login banned in Supabase Auth, businesses
+/// hidden). DELETED: an anonymized placeholder kept only because payment records point to it.
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@map("user_status")
+}
+
 /// App profile for a Supabase Auth user. Created on first successful sign-in.
 model Profile {
   /// Same UUID as the Supabase auth user (auth.users.id).
-  id        String   @id @db.Uuid
-  fullName  String   @map("full_name")
-  email     String   @unique
-  phone     String?
-  avatarUrl String?  @map("avatar_url")
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String     @id @db.Uuid
+  fullName         String     @map("full_name")
+  email            String     @unique
+  phone            String?
+  avatarUrl        String?    @map("avatar_url")
+  role             Role       @default(CUSTOMER)
+  status           UserStatus @default(ACTIVE)
+  /// Set while SUSPENDED (shown to admins; emailed to the user).
+  suspensionReason String?    @map("suspension_reason")
+  suspendedAt      DateTime?  @map("suspended_at")
+  /// When the account was deleted (status DELETED; all personal data removed).
+  deletedAt        DateTime?  @map("deleted_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
 
   businesses            Business[]
   payments              Payment[]              @relation("PaymentUser")
@@ -71,7 +87,11 @@ model Profile {
   moderationDecisions   ModerationDecision[]
   /// Settings changes this user made as an admin.
   settingChanges        SettingChange[]
+  /// Admin actions this user performed (audit log).
+  auditEntries          AdminAuditLog[]
 
+  @@index([status, createdAt(sort: Desc)])
+  @@index([role])
   @@map("profiles")
 }
 
@@ -142,7 +162,8 @@ model Lga {
 // ---------------------------------------------------------------------------
 
 /// Lifecycle: DRAFT -> (PENDING_PAYMENT if payment is required) -> PENDING_REVIEW ->
-/// APPROVED | REJECTED. Admins can SUSPEND an approved business.
+/// APPROVED | REJECTED. Admins can SUSPEND an approved business. DELETED: soft-deleted because
+/// payments exist; only the name and payment rows are kept, for accounting.
 enum BusinessStatus {
   DRAFT
   PENDING_PAYMENT
@@ -150,67 +171,72 @@ enum BusinessStatus {
   APPROVED
   REJECTED
   SUSPENDED
+  DELETED
 
   @@map("business_status")
 }
 
 model Business {
-  id                  String                   @id @default(uuid(7)) @db.Uuid
-  ownerId             String                   @map("owner_id") @db.Uuid
-  name                String
+  id                         String                   @id @default(uuid(7)) @db.Uuid
+  ownerId                    String                   @map("owner_id") @db.Uuid
+  name                       String
   /// URL identifier. Unique across the site.
-  slug                String                   @unique
-  categoryId          String                   @map("category_id") @db.Uuid
-  tagline             String?                  @db.VarChar(120)
-  description         String?
-  yearsOfExperience   Int?                     @map("years_of_experience") @db.SmallInt
+  slug                       String                   @unique
+  categoryId                 String                   @map("category_id") @db.Uuid
+  tagline                    String?                  @db.VarChar(120)
+  description                String?
+  yearsOfExperience          Int?                     @map("years_of_experience") @db.SmallInt
   /// Nigerian numbers stored in E.164 form: +234XXXXXXXXXX.
-  phone               String
-  whatsappNumber      String                   @map("whatsapp_number")
-  email               String?
+  phone                      String
+  whatsappNumber             String                   @map("whatsapp_number")
+  email                      String?
   /// Location fields are filled in wizard step 2, so they are empty on early drafts.
   /// Submitting for review requires all of them.
-  address             String?
+  address                    String?
   /// Area or landmark, e.g. "Opposite Shoprite, Lekki Phase 1".
-  area                String?
-  stateId             Int?                     @map("state_id")
-  lgaId               Int?                     @map("lga_id")
-  services            String[]                 @default([])
+  area                       String?
+  stateId                    Int?                     @map("state_id")
+  lgaId                      Int?                     @map("lga_id")
+  services                   String[]                 @default([])
   /// { mon: { open: "08:00", close: "18:00" } | null, ... }. Validated in app code.
-  openingHours        Json?                    @map("opening_hours")
-  instagramUrl        String?                  @map("instagram_url")
-  facebookUrl         String?                  @map("facebook_url")
-  tiktokUrl           String?                  @map("tiktok_url")
-  websiteUrl          String?                  @map("website_url")
+  openingHours               Json?                    @map("opening_hours")
+  instagramUrl               String?                  @map("instagram_url")
+  facebookUrl                String?                  @map("facebook_url")
+  tiktokUrl                  String?                  @map("tiktok_url")
+  websiteUrl                 String?                  @map("website_url")
   /// Cloudinary public IDs.
-  logoPublicId        String?                  @map("logo_public_id")
-  coverPublicId       String?                  @map("cover_public_id")
-  status              BusinessStatus           @default(DRAFT)
-  rejectionReason     String?                  @map("rejection_reason")
+  logoPublicId               String?                  @map("logo_public_id")
+  coverPublicId              String?                  @map("cover_public_id")
+  status                     BusinessStatus           @default(DRAFT)
+  rejectionReason            String?                  @map("rejection_reason")
   /// Deprecated: no longer used or shown. The public badge comes from the owner's ID check.
-  isVerified          Boolean                  @default(false) @map("is_verified")
-  isFeatured          Boolean                  @default(false) @map("is_featured")
+  isVerified                 Boolean                  @default(false) @map("is_verified")
+  isFeatured                 Boolean                  @default(false) @map("is_featured")
   /// Denormalized counters, updated by app code (reviews and contact events are the source).
-  viewCount           Int                      @default(0) @map("view_count")
-  contactClickCount   Int                      @default(0) @map("contact_click_count")
-  ratingAverage       Decimal                  @default(0) @map("rating_average") @db.Decimal(3, 2)
-  reviewCount         Int                      @default(0) @map("review_count")
+  viewCount                  Int                      @default(0) @map("view_count")
+  contactClickCount          Int                      @default(0) @map("contact_click_count")
+  ratingAverage              Decimal                  @default(0) @map("rating_average") @db.Decimal(3, 2)
+  reviewCount                Int                      @default(0) @map("review_count")
   /// First time the business was approved and shown publicly.
-  publishedAt         DateTime?                @map("published_at")
+  publishedAt                DateTime?                @map("published_at")
   /// Last time the owner sent the listing for review (the admin queue is ordered by this).
-  submittedAt         DateTime?                @map("submitted_at")
+  submittedAt                DateTime?                @map("submitted_at")
   /// The owner edited a live listing; it stays live but an admin should look again.
-  needsRecheck        Boolean                  @default(false) @map("needs_recheck")
+  needsRecheck               Boolean                  @default(false) @map("needs_recheck")
   /// Whether the listing fee was switched on when this business was last submitted.
   /// Approval requires a successful payment only when this is true (fairness rule).
-  feeRequiredAtSubmit Boolean                  @default(false) @map("fee_required_at_submit")
+  feeRequiredAtSubmit        Boolean                  @default(false) @map("fee_required_at_submit")
+  /// Set while the OWNER is suspended: the status to restore when the owner is unsuspended.
+  statusBeforeUserSuspension BusinessStatus?          @map("status_before_user_suspension")
+  /// When the business was deleted (status DELETED).
+  deletedAt                  DateTime?                @map("deleted_at")
   /// Search columns, maintained by a database trigger (see the public_search migration).
   /// Never written by app code. Short text for typo-tolerant trigram matching.
-  searchText          String?                  @map("search_text")
+  searchText                 String?                  @map("search_text")
   /// Weighted full-text vector: name/category (A), services/tagline (B), description (C).
-  searchVector        Unsupported("tsvector")? @map("search_vector")
-  createdAt           DateTime                 @default(now()) @map("created_at")
-  updatedAt           DateTime                 @updatedAt @map("updated_at")
+  searchVector               Unsupported("tsvector")? @map("search_vector")
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @updatedAt @map("updated_at")
 
   /// Deleting a profile deletes their businesses (unless payments exist, see Payment).
   owner               Profile              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -535,4 +561,58 @@ model IdentityVerification {
   @@index([imagesDeletedAt, reviewedAt])
   @@index([reviewedById])
   @@map("identity_verifications")
+}
+
+// ---------------------------------------------------------------------------
+// Admin audit log and storage cleanup
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DELETED
+  USER_SELF_DELETED
+  USER_ROLE_CHANGED
+  BUSINESS_DELETED
+  BUSINESS_SELF_DELETED
+
+  @@map("audit_action")
+}
+
+/// Append-only log of sensitive account actions. Holds no personal data: targets are ids
+/// (pseudonymous once the user is deleted) and `summary` is non-personal (e.g. a role change or
+/// a business name, which is kept for accounting anyway).
+model AdminAuditLog {
+  id               String      @id @default(uuid(7)) @db.Uuid
+  /// Who did it (an admin, or the user themselves). Null if that profile was later deleted.
+  actorId          String?     @map("actor_id") @db.Uuid
+  action           AuditAction
+  /// No foreign keys: the log outlives the user and business it refers to.
+  targetUserId     String?     @map("target_user_id") @db.Uuid
+  targetBusinessId String?     @map("target_business_id") @db.Uuid
+  summary          String?
+  reason           String?
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  actor Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([targetBusinessId])
+  @@index([actorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("admin_audit_log")
+}
+
+/// Cloudinary files whose deletion failed after the database change committed. Retried by the
+/// daily job until they are gone.
+model PendingFileDeletion {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  publicId      String    @unique @map("public_id")
+  /// "upload" (public) or "authenticated" (private).
+  deliveryType  String    @map("delivery_type")
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime? @map("last_attempt_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("pending_file_deletions")
 }

@@ -9,14 +9,16 @@ const isUuid = (value: string) => z.uuid().safeParse(value).success;
 /** The business if `userId` owns it, else null. Never reveals whether it exists. */
 export async function findOwnedBusiness(businessId: string, userId: string) {
   if (!isUuid(businessId)) return null;
-  return prisma.business.findFirst({ where: { id: businessId, ownerId: userId } });
+  return prisma.business.findFirst({
+    where: { id: businessId, ownerId: userId, status: { not: "DELETED" } },
+  });
 }
 
 /** Everything the wizard needs. 404s if the user doesn't own it. */
 export async function getWizardBusiness(businessId: string, userId: string) {
   if (!isUuid(businessId)) notFound();
   const business = await prisma.business.findFirst({
-    where: { id: businessId, ownerId: userId },
+    where: { id: businessId, ownerId: userId, status: { not: "DELETED" } },
     include: {
       category: { select: { id: true, name: true, icon: true } },
       state: { select: { id: true, name: true } },
@@ -49,13 +51,13 @@ export async function getWizardBusiness(businessId: string, userId: string) {
 export type WizardBusiness = Awaited<ReturnType<typeof getWizardBusiness>>["business"];
 
 export async function countOwnedBusinesses(userId: string) {
-  return prisma.business.count({ where: { ownerId: userId } });
+  return prisma.business.count({ where: { ownerId: userId, status: { not: "DELETED" } } });
 }
 
 /** Dashboard list: newest first, with the latest admin comment for rejected/suspended ones. */
 export async function getOwnerDashboard(userId: string) {
   const businesses = await prisma.business.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: userId, status: { not: "DELETED" } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

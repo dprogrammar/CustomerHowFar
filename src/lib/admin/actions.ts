@@ -30,6 +30,7 @@ const STATUSES = [
   "APPROVED",
   "REJECTED",
   "SUSPENDED",
+  "DELETED",
 ] as const satisfies readonly BusinessStatus[];
 
 const base = z.object({ businessId: z.uuid(), expectedStatus: z.enum(STATUSES) });
@@ -49,7 +50,11 @@ async function moderate(
   action: ModerationAction,
   comment: string | null,
   data: (
-    current: { publishedAt: Date | null; feeRequiredAtSubmit: boolean },
+    current: {
+      publishedAt: Date | null;
+      feeRequiredAtSubmit: boolean;
+      statusBeforeUserSuspension: BusinessStatus | null;
+    },
     tx: Prisma.TransactionClient,
   ) => Promise<Prisma.BusinessUpdateManyMutationInput> | Prisma.BusinessUpdateManyMutationInput,
 ) {
@@ -61,7 +66,13 @@ async function moderate(
     await tx.$queryRaw`SELECT id FROM businesses WHERE id = ${input.businessId}::uuid FOR UPDATE`;
     const current = await tx.business.findUnique({
       where: { id: input.businessId },
-      select: { status: true, publishedAt: true, feeRequiredAtSubmit: true, slug: true },
+      select: {
+        status: true,
+        publishedAt: true,
+        feeRequiredAtSubmit: true,
+        slug: true,
+        statusBeforeUserSuspension: true,
+      },
     });
     if (!current || current.status !== input.expectedStatus) throw new StaleError();
 
@@ -188,6 +199,11 @@ export async function reinstateListingAction(
   let slug: string;
   try {
     slug = await moderate(admin.id, parsed.data, ["SUSPENDED"], "REINSTATED", null, (current) => {
+      if (current.statusBeforeUserSuspension) {
+        throw new RuleError(
+          "This listing is hidden because its owner is suspended. Unsuspend the owner to restore it.",
+        );
+      }
       // Previously live listings go back live; never-approved ones go back to review.
       wentLive = current.publishedAt !== null;
       return wentLive
@@ -249,7 +265,7 @@ export async function setListingFlagAction(
 
   const changed = await prisma.$transaction(async (tx) => {
     const updated = await tx.business.updateMany({
-      where: { id: businessId, isFeatured: !value },
+      where: { id: businessId, isFeatured: !value, status: { not: "DELETED" } },
       data: { isFeatured: value },
     });
     if (updated.count !== 1) return false;

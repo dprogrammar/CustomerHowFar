@@ -15,6 +15,8 @@ import {
   identityAcceptedEmail,
   identityRejectedEmail,
   adminIdentitySubmittedEmail,
+  accountSuspendedEmail,
+  businessDeletedEmail,
 } from "./templates";
 import { ID_TYPE_LABELS } from "@/lib/identity/rules";
 
@@ -277,6 +279,48 @@ export function notifyAdminOfIdentity(verificationId: string, resubmission: bool
         businessCount: v.user?._count.businesses ?? 0,
         resubmission,
         reviewUrl: `${getSiteUrl()}/admin/identity/${v.id}`,
+      }),
+    });
+  });
+}
+
+// --- Accounts ------------------------------------------------------------------------------
+
+export function notifyUserSuspended(userId: string) {
+  return safely("account-suspended", async () => {
+    const p = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: { fullName: true, email: true, status: true, suspensionReason: true },
+    });
+    if (!p || p.status !== "SUSPENDED" || !p.suspensionReason) return;
+    await sendEmail({
+      to: { email: p.email, name: p.fullName },
+      tag: "account-suspended",
+      ...accountSuspendedEmail({
+        name: p.fullName,
+        reason: p.suspensionReason,
+        supportUrl: `${getSiteUrl()}/contact`,
+      }),
+    });
+  });
+}
+
+/** The owner's details are captured before deletion and passed in. */
+export function notifyBusinessDeleted(input: {
+  ownerEmail: string;
+  ownerName: string;
+  businessName: string;
+  reason: string;
+}) {
+  return safely("business-deleted", async () => {
+    await sendEmail({
+      to: { email: input.ownerEmail, name: input.ownerName },
+      tag: "business-deleted",
+      ...businessDeletedEmail({
+        ownerName: input.ownerName,
+        businessName: input.businessName,
+        reason: input.reason,
+        supportUrl: `${getSiteUrl()}/contact`,
       }),
     });
   });

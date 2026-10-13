@@ -21,6 +21,7 @@ import {
 } from "@/lib/business/rules";
 import { getIdentityState } from "@/lib/identity/server";
 import { formatKobo } from "@/lib/payments/methods";
+import { DeleteBusinessButton } from "@/components/business/delete-business-button";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { buttonVariants } from "@/components/ui/button";
@@ -189,6 +190,16 @@ function BusinessCardRow({ b }: { b: DashboardBusiness }) {
               View<span className="sr-only"> {b.name}</span>
             </Link>
           </div>
+          {b.status !== "SUSPENDED" && (
+            <div className="mt-3 border-t border-border pt-3">
+              <DeleteBusinessButton
+                businessId={b.id}
+                businessName={b.name}
+                mode="owner"
+                hasPayments={Boolean(b.latestPayment)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </li>

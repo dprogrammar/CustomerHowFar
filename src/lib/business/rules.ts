@@ -10,7 +10,13 @@ export const SERVICE_MAX_LENGTH = 40;
 export const CAPTION_MAX = 200;
 
 export type BusinessStatus =
-  "DRAFT" | "PENDING_PAYMENT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
+  | "DRAFT"
+  | "PENDING_PAYMENT"
+  | "PENDING_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "SUSPENDED"
+  | "DELETED";
 
 export const WIZARD_STEPS = [
   { step: 1, label: "Basics" },
@@ -38,11 +44,12 @@ export const STATUS_META: Record<
   APPROVED: { label: "Live", tone: "success" },
   REJECTED: { label: "Changes requested", tone: "danger" },
   SUSPENDED: { label: "Suspended", tone: "dark" },
+  DELETED: { label: "Deleted", tone: "dark" },
 };
 
-/** Owners may edit anything except suspended listings. */
+/** Owners may edit anything except suspended (or deleted) listings. */
 export function canOwnerEdit(status: BusinessStatus) {
-  return status !== "SUSPENDED";
+  return status !== "SUSPENDED" && status !== "DELETED";
 }
 
 /** Statuses from which the owner can (re)submit for review. */

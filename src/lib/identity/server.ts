@@ -178,6 +178,7 @@ export async function getAdminIdentity(id: string) {
           phone: true,
           createdAt: true,
           businesses: {
+            where: { status: { not: "DELETED" } },
             select: { id: true, name: true, status: true },
             orderBy: { createdAt: "desc" },
           },

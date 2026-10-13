@@ -185,7 +185,9 @@ async function createDraft(
       return await prisma.$transaction(async (tx) => {
         // Lock the owner's profile so two tabs can't both create a 6th business.
         await tx.$queryRaw`SELECT id FROM profiles WHERE id = ${userId}::uuid FOR UPDATE`;
-        const count = await tx.business.count({ where: { ownerId: userId } });
+        const count = await tx.business.count({
+          where: { ownerId: userId, status: { not: "DELETED" } },
+        });
         if (count >= MAX_BUSINESSES_PER_USER) {
           return {
             error: `You can list up to ${MAX_BUSINESSES_PER_USER} businesses. Contact support if you need more.`,

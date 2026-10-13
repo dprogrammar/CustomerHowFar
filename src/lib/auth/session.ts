@@ -25,21 +25,47 @@ export type CurrentUser = {
  * JWT signature, so the result can be trusted for authorization. Deduplicated per request.
  */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  return (await readSession()).user;
+});
+
+/**
+ * `stale`: the cookie holds a valid token, but its session was revoked (signed out everywhere,
+ * account deleted) or the account is suspended. Such visitors are treated as signed out.
+ */
+const readSession = cache(async (): Promise<{ user: SessionUser | null; stale: boolean }> => {
   // The session is per request (and Supabase reads the clock to check expiry), so never
   // evaluate this during prerendering.
   await connection();
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (error || !claims?.sub || !claims.email) return null;
+  if (error || !claims?.sub || !claims.email) return { user: null, stale: false };
+
+  // The token is verified locally, so also check the session still exists and the account is
+  // active.
+  const sessionId = typeof claims.session_id === "string" ? claims.session_id : null;
+  if (!sessionId || !(await isSessionUsable(claims.sub, sessionId))) {
+    return { user: null, stale: true };
+  }
 
   const metadata = (claims.user_metadata ?? {}) as { full_name?: unknown };
   return {
-    id: claims.sub,
-    email: claims.email,
-    fullName: typeof metadata.full_name === "string" ? metadata.full_name : null,
+    user: {
+      id: claims.sub,
+      email: claims.email,
+      fullName: typeof metadata.full_name === "string" ? metadata.full_name : null,
+    },
+    stale: false,
   };
 });
+
+async function isSessionUsable(userId: string, sessionId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return false;
+  const [row] = await prisma.$queryRaw<{ live: boolean; status: string | null }[]>`
+    SELECT EXISTS (SELECT 1 FROM auth.sessions WHERE id = ${sessionId}::uuid AND user_id = ${userId}::uuid) AS live,
+           (SELECT status::text FROM profiles WHERE id = ${userId}::uuid) AS status`;
+  return Boolean(row?.live) && (row?.status === null || row?.status === "ACTIVE");
+}
 
 /** Signed-in user with their profile (created on first use), or null. */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -64,7 +90,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 /** For protected pages: returns the user or redirects to /login?next=<returnTo>. */
 export async function requireUser(returnTo: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(loginUrl(returnTo));
+  if (!user) {
+    // A revoked session still has cookies; clear them first (a route handler can) so the proxy
+    // doesn't bounce the visitor between /login and this page.
+    if ((await readSession()).stale) redirect(`/auth/ended?next=${encodeURIComponent(returnTo)}`);
+    redirect(loginUrl(returnTo));
+  }
   return user;
 }
 

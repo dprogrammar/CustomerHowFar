@@ -87,6 +87,34 @@ policies, so the public Supabase Data API cannot read or write anything.
 - The only public trust badge is "ID submitted" (owner's check accepted). `Business.isVerified`
   is no longer used or shown; it stays in the schema only for old data.
 
+### Accounts: suspension and deletion
+
+- `Profile.status`: `ACTIVE`, `SUSPENDED` (with `suspensionReason`/`suspendedAt`) or `DELETED`
+  (an anonymous placeholder: name "Deleted user", email `deleted-<id>@deleted.invalid`, no
+  phone, kept only because payment rows point to it).
+- **Suspend** (admin, with a reason): the Supabase Auth user is banned, all their sessions are
+  deleted, and every business is set to `SUSPENDED` with its old status saved in
+  `statusBeforeUserSuspension`. Unsuspend restores each one exactly and lifts the ban. The email
+  stays registered, so it can't sign up again. Listings hidden this way can't be reinstated
+  one by one.
+- **Sessions**: `getSessionUser()` also checks that the token's session still exists in
+  `auth.sessions` and that the profile is `ACTIVE`, so revoked, suspended and deleted users are
+  signed out at once. `/auth/ended` clears their cookies.
+- **Delete a business** (owner or admin; type the name to confirm): with payments it becomes
+  `DELETED` (only the name and payment rows are kept; slug becomes `deleted-<id>`; photos,
+  reviews, saves and contact events are deleted); without payments it is removed completely.
+- **Delete an account** (admin, or the user from /account with DELETE + password): login
+  deleted (the email can sign up again), businesses deleted as above, ID images deleted at once
+  and verification records unlinked and anonymized, saves/reviews/contact events deleted,
+  payments anonymized (no sender details or receipt file), then the profile is deleted or
+  replaced by the placeholder.
+- **Safety**: admins can't suspend, delete or change the role of themselves; the last active
+  admin can't be suspended, deleted or demoted (admin rows are locked); deleting an admin
+  needs an extra confirmation; admins can't self-delete from /account.
+- `AdminAuditLog` records every suspension, role change and deletion (who, when, reason) with no
+  personal data. Cloudinary files are deleted after the database change commits; failures are
+  retried and then queued in `PendingFileDeletion` for the daily job.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

@@ -68,6 +68,16 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     };
   }
 
+  // Supabase bans suspended users, but check the profile too in case the ban hasn't applied.
+  const existing = await prisma.profile.findUnique({
+    where: { id: data.user.id },
+    select: { status: true },
+  });
+  if (existing && existing.status !== "ACTIVE") {
+    await supabase.auth.signOut({ scope: "local" });
+    return { status: "error", message: SUSPENDED_MESSAGE, values };
+  }
+
   await ensureProfile({
     id: data.user.id,
     email: data.user.email ?? parsed.data.email,
@@ -75,6 +85,9 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   });
   redirect(next);
 }
+
+const SUSPENDED_MESSAGE =
+  "This account has been suspended, so you can't log in. If you think this is a mistake, contact support.";
 
 export async function signupAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = { fullName: text(formData, "fullName"), email: text(formData, "email") };

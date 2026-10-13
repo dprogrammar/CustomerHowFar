@@ -6,6 +6,7 @@ import { logoutAction } from "@/lib/auth/actions";
 import { initials, requireUser } from "@/lib/auth/session";
 import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
 import { getIdentityState } from "@/lib/identity/server";
+import { DeleteAccount } from "@/components/account/delete-account";
 import { ProfileForm } from "@/components/account/profile-form";
 import { FormAlert } from "@/components/auth/form-fields";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +47,6 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
         </FormAlert>
       )}
       {notice && <FormAlert status="success">{notice}</FormAlert>}
-
       <Card>
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
           <span
@@ -88,7 +88,6 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
           </div>
         </div>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Your details</CardTitle>
@@ -98,7 +97,6 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
           <ProfileForm fullName={user.fullName} phone={user.phone} />
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Identity check</CardTitle>
@@ -125,7 +123,6 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
           </Link>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Security</CardTitle>
@@ -153,6 +150,37 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
           </form>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Delete my account</CardTitle>
+          <CardDescription>Permanently delete your account and personal data.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm text-gray-800">
+          <div>
+            <p className="font-medium text-gray-900">What is deleted</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>Your profile, login, name, email and phone number</li>
+              <li>All your business listings, with their photos, reviews and saves</li>
+              <li>Your ID photo, selfie and saved businesses</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-gray-900">What is kept</p>
+            <p className="mt-1">
+              Records of listing fees you paid (amount, date, reference, method and business name),
+              without your name, email or phone, because we must keep financial records.
+            </p>
+          </div>
+          {user.role === "ADMIN" ? (
+            <p className="rounded-lg bg-muted p-3">
+              Admin accounts can&apos;t be deleted here. Ask another admin to remove your admin role
+              first.
+            </p>
+          ) : (
+            <DeleteAccount />
+          )}
+        </CardContent>
+      </Card>{" "}
     </div>
   );
 }

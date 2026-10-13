@@ -10,6 +10,7 @@ import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
 import { PAYMENT_STATUS_LABELS } from "@/lib/payments/methods";
 import { IdentityStatusBadge } from "@/components/admin/identity-status-badge";
 import { ModerationPanel } from "@/components/admin/moderation-panel";
+import { DeleteBusinessButton } from "@/components/business/delete-business-button";
 import { StatusBadge } from "@/components/business/status-badge";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { Badge } from "@/components/ui/badge";
@@ -106,13 +107,15 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
         {b.needsRecheck && <Badge variant="accent">Edited since approval</Badge>}
         <IdentityStatusBadge state={identity.state} />
         {b.isFeatured && <Badge variant="accent">Featured</Badge>}
-        <Link
-          href={`/business/${b.slug}`}
-          className="ml-auto inline-flex items-center gap-1.5 rounded text-sm font-semibold text-brand-700 underline underline-offset-2"
-        >
-          <ExternalLink aria-hidden="true" className="size-4" />
-          {status === "APPROVED" ? "View public page" : "Preview listing page"}
-        </Link>
+        {status !== "DELETED" && (
+          <Link
+            href={`/business/${b.slug}`}
+            className="ml-auto inline-flex items-center gap-1.5 rounded text-sm font-semibold text-brand-700 underline underline-offset-2"
+          >
+            <ExternalLink aria-hidden="true" className="size-4" />
+            {status === "APPROVED" ? "View public page" : "Preview listing page"}
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -314,20 +317,55 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
         </div>
 
         <div className="order-1 space-y-5 xl:order-2">
-          <div className="xl:sticky xl:top-[calc(var(--spacing-header)+1rem)]">
-            <ModerationPanel
-              businessId={b.id}
-              businessName={b.name}
-              status={status}
-              needsRecheck={b.needsRecheck}
-              isFeatured={b.isFeatured}
-              paymentBlocksApproval={b.feeRequiredAtSubmit && !hasPaid}
-              identity={{ state: identity.state, pendingId: identity.pendingId }}
-            />
-          </div>
+          {status === "DELETED" ? (
+            <div
+              role="note"
+              className="rounded-xl bg-gray-100 p-4 text-sm text-gray-900 ring-1 ring-gray-300"
+            >
+              <p className="font-semibold">
+                Deleted{b.deletedAt ? ` on ${dateTime.format(b.deletedAt)}` : ""}
+              </p>
+              <p className="mt-1">
+                Only the name and payment records are kept, for accounting. It is hidden everywhere
+                else.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 xl:sticky xl:top-[calc(var(--spacing-header)+1rem)]">
+              {b.statusBeforeUserSuspension && (
+                <p className="rounded-lg bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200">
+                  Hidden because the owner is suspended.{" "}
+                  <Link href={`/admin/users/${b.owner.id}`} className="font-semibold underline">
+                    Manage the owner
+                  </Link>
+                </p>
+              )}
+              <ModerationPanel
+                businessId={b.id}
+                businessName={b.name}
+                status={status}
+                needsRecheck={b.needsRecheck}
+                isFeatured={b.isFeatured}
+                paymentBlocksApproval={b.feeRequiredAtSubmit && !hasPaid}
+                identity={{ state: identity.state, pendingId: identity.pendingId }}
+              />
+              <DeleteBusinessButton
+                businessId={b.id}
+                businessName={b.name}
+                mode="admin"
+                hasPayments={b.payments.length > 0}
+                redirectTo="/admin/listings?tab=review"
+              />
+            </div>
+          )}
           <Section title="Owner">
             <dl className="divide-y divide-border">
-              <Field label="Name">{b.owner.fullName}</Field>
+              <Field label="Name">
+                <Link href={`/admin/users/${b.owner.id}`} className="text-brand-700 underline">
+                  {b.owner.fullName}
+                </Link>
+                {b.owner.status === "SUSPENDED" ? " (suspended)" : ""}
+              </Field>
               <Field label="Email">
                 <span className="break-all">{b.owner.email}</span>
               </Field>

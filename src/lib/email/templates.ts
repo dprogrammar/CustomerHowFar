@@ -287,6 +287,59 @@ export function paymentReceiptEmail(input: {
   };
 }
 
+// --- Accounts ------------------------------------------------------------------------------
+
+export function accountSuspendedEmail(input: {
+  name: string;
+  reason: string;
+  supportUrl: string;
+}): RenderedEmail {
+  const first = input.name.split(" ")[0] || "there";
+  return {
+    subject: "Your CustomerHowFar account has been suspended",
+    html: layout({
+      preheader: "Your account and listings are no longer available.",
+      heading: "Your account has been suspended",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          "Our team has suspended your CustomerHowFar account. You can no longer log in, and your business listings are hidden from customers. Reason:",
+        ) +
+        quote(input.reason) +
+        paragraph(
+          `If you think this is a mistake, please <a href="${escapeHtml(input.supportUrl)}" style="color:${BRAND}">contact our support team</a>.`,
+        ),
+    }),
+    text: `Hi ${first},\n\nOur team has suspended your CustomerHowFar account. You can no longer log in, and your business listings are hidden from customers.\n\nReason: ${input.reason}\n\nIf you think this is a mistake, contact support: ${input.supportUrl}${textFooter()}`,
+  };
+}
+
+export function businessDeletedEmail(input: {
+  ownerName: string;
+  businessName: string;
+  reason: string;
+  supportUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `Your listing has been removed: ${input.businessName}`,
+    html: layout({
+      preheader: `${input.businessName} has been removed from CustomerHowFar.`,
+      heading: "Your listing has been removed",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `Our team has deleted <strong>${escapeHtml(input.businessName)}</strong> from CustomerHowFar, including its photos. Reason:`,
+        ) +
+        quote(input.reason) +
+        paragraph(
+          `If you think this is a mistake, please <a href="${escapeHtml(input.supportUrl)}" style="color:${BRAND}">contact our support team</a>.`,
+        ),
+    }),
+    text: `Hi ${first},\n\nOur team has deleted ${input.businessName} from CustomerHowFar, including its photos.\n\nReason: ${input.reason}\n\nIf you think this is a mistake, contact support: ${input.supportUrl}${textFooter()}`,
+  };
+}
+
 // --- Identity checks -----------------------------------------------------------------------
 
 export function identityAcceptedEmail(input: {

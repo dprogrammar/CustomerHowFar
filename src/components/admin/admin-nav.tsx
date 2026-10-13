@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Settings,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,12 @@ const ITEMS: {
     href: "/admin/identity",
     icon: IdCard,
     match: (p) => p.startsWith("/admin/identity"),
+  },
+  {
+    label: "Users",
+    href: "/admin/users",
+    icon: Users,
+    match: (p) => p.startsWith("/admin/users"),
   },
   {
     label: "Payments",
