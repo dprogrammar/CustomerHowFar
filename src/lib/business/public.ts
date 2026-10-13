@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { CATALOG_TAGS } from "@/lib/data/catalog";
 import { prisma } from "@/lib/prisma";
+import { MIN_REVIEWS_FOR_RANKING } from "@/lib/reviews/rules";
 import { PUBLIC_TAGS } from "./cache-tags";
 
 // Public reads. ONLY approved businesses are returned here. Results are cached and tagged;
@@ -24,6 +25,8 @@ const publicSelect = {
   email: true,
   area: true,
   isFeatured: true,
+  ratingAverage: true,
+  reviewCount: true,
   logoPublicId: true,
   coverPublicId: true,
   instagramUrl: true,
@@ -94,6 +97,9 @@ export type BusinessCardData = {
   /** Owner's ID check accepted ("ID submitted" badge). */
   idChecked: boolean;
   isFeatured: boolean;
+  /** Average of published reviews (0 when there are none) and their count. */
+  ratingAverage: number;
+  reviewCount: number;
   logoPublicId: string | null;
   coverPublicId: string | null;
   categoryName: string;
@@ -109,6 +115,8 @@ export const cardSelect = {
   tagline: true,
   area: true,
   isFeatured: true,
+  ratingAverage: true,
+  reviewCount: true,
   logoPublicId: true,
   coverPublicId: true,
   category: { select: { name: true, icon: true } },
@@ -132,6 +140,8 @@ export function toCard(
     area: b.area,
     idChecked: b.owner.identityVerifications.length > 0,
     isFeatured: b.isFeatured,
+    ratingAverage: Number(b.ratingAverage),
+    reviewCount: b.reviewCount,
     logoPublicId: b.logoPublicId,
     coverPublicId: b.coverPublicId,
     categoryName: b.category.name,
@@ -250,7 +260,7 @@ export async function getSitemapData() {
 
 // --- Search -------------------------------------------------------------------------------
 
-export const SEARCH_SORTS = ["best", "newest", "viewed"] as const;
+export const SEARCH_SORTS = ["best", "rated", "newest", "viewed"] as const;
 export type SearchSort = (typeof SEARCH_SORTS)[number];
 export const SEARCH_PAGE_SIZE = 20;
 const MAX_RESULTS = 200;
@@ -285,6 +295,8 @@ type Row = {
   area: string | null;
   id_checked: boolean;
   is_featured: boolean;
+  rating_average: number;
+  review_count: number;
   logo_public_id: string | null;
   cover_public_id: string | null;
   category_name: string;
@@ -338,7 +350,10 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
       ? Prisma.sql`b.published_at DESC NULLS LAST, b.id`
       : input.sort === "viewed"
         ? Prisma.sql`b.view_count DESC, b.published_at DESC NULLS LAST, b.id`
-        : Prisma.sql`(${relevance} + ${boost}) DESC, b.published_at DESC NULLS LAST, b.id`;
+        : input.sort === "rated"
+          ? // Businesses with enough reviews first, so one 5-star review can't beat many 4.8s.
+            Prisma.sql`(b.review_count >= ${MIN_REVIEWS_FOR_RANKING}) DESC, b.rating_average DESC, b.review_count DESC, b.published_at DESC NULLS LAST, b.id`
+          : Prisma.sql`(${relevance} + ${boost}) DESC, b.published_at DESC NULLS LAST, b.id`;
 
   const from = Prisma.sql`
     FROM businesses b
@@ -350,6 +365,7 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
   const [rows, countRows] = await Promise.all([
     prisma.$queryRaw<Row[]>`
       SELECT b.id, b.slug, b.name, b.tagline, b.area, ${idChecked} AS id_checked, b.is_featured,
+             b.rating_average::float8 AS rating_average, b.review_count,
              b.logo_public_id, b.cover_public_id,
              c.name AS category_name, c.icon AS category_icon,
              s.name AS state_name, l.name AS lga_name
@@ -367,6 +383,8 @@ export async function searchBusinesses(input: SearchParamsInput): Promise<Search
     area: r.area,
     idChecked: r.id_checked,
     isFeatured: r.is_featured,
+    ratingAverage: Number(r.rating_average),
+    reviewCount: Number(r.review_count),
     logoPublicId: r.logo_public_id,
     coverPublicId: r.cover_public_id,
     categoryName: r.category_name,

@@ -8,6 +8,8 @@ export type EmailMessage = {
   text: string;
   /** Short category used for logs and Brevo analytics, e.g. "listing-approved". */
   tag: string;
+  /** Where replies go (e.g. the sender of a contact form message). */
+  replyTo?: { email: string; name?: string };
 };
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
@@ -57,6 +59,7 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
         htmlContent: message.html,
         textContent: message.text,
         tags: [message.tag],
+        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
       }),
       signal: AbortSignal.timeout(10_000),
     });

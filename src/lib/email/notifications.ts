@@ -17,7 +17,11 @@ import {
   adminIdentitySubmittedEmail,
   accountSuspendedEmail,
   businessDeletedEmail,
+  newReviewEmail,
+  adminListingReportEmail,
+  contactMessageEmail,
 } from "./templates";
+import { LISTING_REASON_LABELS, reviewerName } from "@/lib/reviews/rules";
 import { ID_TYPE_LABELS } from "@/lib/identity/rules";
 
 // Each function loads what it needs, sends, and never throws. Call them from `after()` so they
@@ -323,5 +327,89 @@ export function notifyBusinessDeleted(input: {
         supportUrl: `${getSiteUrl()}/contact`,
       }),
     });
+  });
+}
+
+// --- Reviews, reports and contact ------------------------------------------------------------
+
+export function notifyNewReview(reviewId: string) {
+  return safely("new-review", async () => {
+    const r = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        rating: true,
+        comment: true,
+        status: true,
+        user: { select: { fullName: true } },
+        business: {
+          select: {
+            name: true,
+            slug: true,
+            owner: { select: { fullName: true, email: true, status: true } },
+          },
+        },
+      },
+    });
+    if (!r || r.status !== "PUBLISHED" || r.business.owner.status !== "ACTIVE") return;
+    await sendEmail({
+      to: { email: r.business.owner.email, name: r.business.owner.fullName },
+      tag: "new-review",
+      ...newReviewEmail({
+        ownerName: r.business.owner.fullName,
+        businessName: r.business.name,
+        rating: r.rating,
+        comment: r.comment ?? "",
+        reviewerName: reviewerName(r.user.fullName),
+        listingUrl: `${getSiteUrl()}/business/${r.business.slug}#reviews-title`,
+      }),
+    });
+  });
+}
+
+export function notifyAdminOfListingReport(reportId: string) {
+  return safely("admin-listing-report", async () => {
+    const to = process.env.ADMIN_NOTIFY_EMAIL;
+    if (!to) return;
+    const r = await prisma.businessReport.findUnique({
+      where: { id: reportId },
+      select: {
+        reason: true,
+        details: true,
+        businessId: true,
+        business: { select: { name: true } },
+      },
+    });
+    if (!r) return;
+    const openReports = await prisma.businessReport.count({
+      where: { businessId: r.businessId, status: "OPEN" },
+    });
+    await sendEmail({
+      to: { email: to },
+      tag: "admin-listing-report",
+      ...adminListingReportEmail({
+        businessName: r.business.name,
+        reason: LISTING_REASON_LABELS[r.reason] ?? r.reason,
+        details: r.details,
+        openReports,
+        reviewUrl: `${getSiteUrl()}/admin/reports?tab=listings`,
+      }),
+    });
+  });
+}
+
+/** Contact form: sent to the admin inbox with reply-to set to the sender. Returns success. */
+export async function sendContactMessage(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  const to = process.env.ADMIN_NOTIFY_EMAIL;
+  if (!to) return false;
+  return sendEmail({
+    to: { email: to },
+    replyTo: { email: input.email, name: input.name },
+    tag: "contact-form",
+    ...contactMessageEmail(input),
   });
 }

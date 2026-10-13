@@ -115,6 +115,23 @@ policies, so the public Supabase Data API cannot read or write anything.
   personal data. Cloudinary files are deleted after the database change commits; failures are
   retried and then queued in `PendingFileDeletion` for the daily job.
 
+### Reviews and reports
+
+- Reviews come only from logged-in, active users with a confirmed email who contacted the
+  business through CustomerHowFar while logged in (a WhatsApp/call/email `ContactEvent` with
+  their user id). Owners can't review their own businesses; one review per user per business
+  (editable/deletable). Comments are 20-1000 characters; submissions are rate limited per user.
+- `Business.ratingAverage` / `reviewCount` count only `PUBLISHED` reviews and are recomputed
+  in the same transaction as every review change (the business row is locked first), including
+  hides/restores and account deletion.
+- Owners post one public reply per review (`ownerReply`, `ownerReplyAt`).
+- `ReviewReport` and `BusinessReport`: one OPEN report per user per review/business (partial
+  unique indexes). Admins resolve them in /admin/reports (hide/restore/dismiss; dismiss, suspend
+  listing or suspend owner). Every decision is in `AdminAuditLog`.
+- "Highest rated" search sort: businesses with at least 3 reviews first, then by rating.
+- `RateLimitHit`: generic rate-limit rows (key = purpose + user id or a keyed hash of the IP,
+  never a raw IP). Pruned after two days by the daily job.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

@@ -1,5 +1,5 @@
-// Central list of app routes. Several pages are not built yet; links point to their
-// intended routes and show the 404 page until then.
+// Central list of app routes. Every footer link must point to a real page or anchor
+// (tests check that none of them 404).
 
 export const ROUTES = {
   home: "/",
@@ -18,14 +18,14 @@ export const ROUTES = {
   about: "/about",
   howItWorks: "/#how-it-works",
   contact: "/contact",
-  pricing: "/pricing",
-  businessGuide: "/help/businesses",
+  pricing: "/help#listing-fee",
+  businessGuide: "/help#for-businesses",
   help: "/help",
   safety: "/safety",
-  report: "/help/report",
+  report: "/help#report-a-problem",
   terms: "/terms",
   privacy: "/privacy",
-  cookies: "/cookies",
+  cookies: "/privacy#cookies",
 } as const;
 
 export type NavLink = { label: string; href: string };
@@ -48,7 +48,7 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
     title: "For Businesses",
     links: [
       { label: "List your business", href: ROUTES.listBusiness },
-      { label: "Pricing", href: ROUTES.pricing },
+      { label: "Listing fee", href: ROUTES.pricing },
       { label: "Business guide", href: ROUTES.businessGuide },
     ],
   },
@@ -63,9 +63,9 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
   {
     title: "Legal",
     links: [
-      { label: "Terms of use", href: ROUTES.terms },
-      { label: "Privacy policy", href: ROUTES.privacy },
-      { label: "Cookie policy", href: ROUTES.cookies },
+      { label: "Terms of Service", href: ROUTES.terms },
+      { label: "Privacy Policy", href: ROUTES.privacy },
+      { label: "Cookies", href: ROUTES.cookies },
     ],
   },
 ];

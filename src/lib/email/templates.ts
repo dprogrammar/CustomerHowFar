@@ -340,6 +340,110 @@ export function businessDeletedEmail(input: {
   };
 }
 
+// --- Reviews, reports and contact ----------------------------------------------------------
+
+function stars(rating: number) {
+  return "★".repeat(rating) + "☆".repeat(5 - rating);
+}
+
+export function newReviewEmail(input: {
+  ownerName: string;
+  businessName: string;
+  rating: number;
+  comment: string;
+  reviewerName: string;
+  listingUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `New ${input.rating}-star review for ${input.businessName}`,
+    html: layout({
+      preheader: `${input.reviewerName} reviewed ${input.businessName}.`,
+      heading: "You have a new review",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `<strong>${escapeHtml(input.reviewerName)}</strong> left a review for <strong>${escapeHtml(input.businessName)}</strong>: <span style="color:${ACCENT}" aria-label="${input.rating} out of 5 stars">${stars(input.rating)}</span>`,
+        ) +
+        quote(input.comment) +
+        button("Read and reply", input.listingUrl) +
+        paragraph(
+          "A short, polite reply shows customers you care. If the review breaks our rules, you can report it from your listing page.",
+        ),
+    }),
+    text: `Hi ${first},
+
+${input.reviewerName} left a ${input.rating}-star review for ${input.businessName}:
+
+${input.comment}
+
+Read and reply: ${input.listingUrl}${textFooter()}`,
+  };
+}
+
+export function adminListingReportEmail(input: {
+  businessName: string;
+  reason: string;
+  details: string | null;
+  openReports: number;
+  reviewUrl: string;
+}): RenderedEmail {
+  return {
+    subject: `[Report] ${input.businessName}: ${input.reason}`,
+    html: layout({
+      preheader: `A listing was reported: ${input.reason}.`,
+      heading: "A listing was reported",
+      body:
+        detailsTable([
+          ["Business", input.businessName],
+          ["Reason", input.reason],
+          ["Open reports", String(input.openReports)],
+        ]) +
+        (input.details ? quote(input.details) : "") +
+        button("Open reported listings", input.reviewUrl),
+    }),
+    text: `A listing was reported.
+Business: ${input.businessName}
+Reason: ${input.reason}
+Open reports: ${input.openReports}${
+      input.details
+        ? `
+
+${input.details}`
+        : ""
+    }
+
+${input.reviewUrl}`,
+  };
+}
+
+export function contactMessageEmail(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): RenderedEmail {
+  return {
+    subject: `[Contact] ${input.subject}`,
+    html: layout({
+      preheader: `Message from ${input.name}.`,
+      heading: "New message from the contact form",
+      body:
+        detailsTable([
+          ["From", input.name],
+          ["Email", input.email],
+          ["Subject", input.subject],
+        ]) +
+        quote(input.message) +
+        paragraph("Reply to this email to answer them directly."),
+    }),
+    text: `From: ${input.name} <${input.email}>
+Subject: ${input.subject}
+
+${input.message}`,
+  };
+}
+
 // --- Identity checks -----------------------------------------------------------------------
 
 export function identityAcceptedEmail(input: {

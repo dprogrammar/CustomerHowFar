@@ -59,6 +59,7 @@ export async function deleteBusinessInTx(
     await tx.review.deleteMany({ where: { businessId: b.id } });
     await tx.savedBusiness.deleteMany({ where: { businessId: b.id } });
     await tx.contactEvent.deleteMany({ where: { businessId: b.id } });
+    await tx.businessReport.deleteMany({ where: { businessId: b.id } });
     // Unfinished payments can never complete now.
     await tx.payment.updateMany({
       where: { businessId: b.id, status: { in: ["PENDING", "AWAITING_CONFIRMATION"] } },

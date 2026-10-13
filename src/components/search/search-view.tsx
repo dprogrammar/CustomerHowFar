@@ -15,6 +15,7 @@ import { DesktopFilters, MobileFilters } from "./search-filters";
 
 const SORT_LABELS: Record<SearchSort, string> = {
   best: "Best match",
+  rated: "Highest rated",
   newest: "Newest",
   viewed: "Most viewed",
 };

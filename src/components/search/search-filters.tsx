@@ -22,6 +22,7 @@ export type FiltersProps = {
 
 const SORTS = [
   { value: "best", label: "Best match" },
+  { value: "rated", label: "Highest rated" },
   { value: "newest", label: "Newest" },
   { value: "viewed", label: "Most viewed" },
 ];

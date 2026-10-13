@@ -89,6 +89,10 @@ model Profile {
   settingChanges        SettingChange[]
   /// Admin actions this user performed (audit log).
   auditEntries          AdminAuditLog[]
+  reviewReports         ReviewReport[]         @relation("ReviewReporter")
+  resolvedReviewReports ReviewReport[]         @relation("ReviewReportResolver")
+  businessReports       BusinessReport[]       @relation("BusinessReporter")
+  resolvedBizReports    BusinessReport[]       @relation("BusinessReportResolver")
 
   @@index([status, createdAt(sort: Desc)])
   @@index([role])
@@ -250,6 +254,7 @@ model Business {
   savedBy             SavedBusiness[]
   contactEvents       ContactEvent[]
   moderationDecisions ModerationDecision[]
+  reports             BusinessReport[]
 
   // Public listings always filter by status, so status leads most composite indexes.
   @@index([status, createdAt(sort: Desc)])
@@ -378,19 +383,25 @@ enum ReviewStatus {
   @@map("review_status")
 }
 
-/// One review per user per business. Rating 1-5 (enforced by a CHECK constraint).
+/// One review per user per business. Rating 1-5 (enforced by a CHECK constraint). Only
+/// PUBLISHED reviews count towards Business.ratingAverage / reviewCount (kept in sync in the
+/// same transaction as every review change).
 model Review {
-  id         String       @id @default(uuid(7)) @db.Uuid
-  businessId String       @map("business_id") @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
-  rating     Int          @db.SmallInt
-  comment    String?
-  status     ReviewStatus @default(PUBLISHED)
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
+  id           String       @id @default(uuid(7)) @db.Uuid
+  businessId   String       @map("business_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  rating       Int          @db.SmallInt
+  comment      String?
+  status       ReviewStatus @default(PUBLISHED)
+  /// The business owner's single public reply.
+  ownerReply   String?      @map("owner_reply")
+  ownerReplyAt DateTime?    @map("owner_reply_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  user     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports  ReviewReport[]
 
   @@unique([businessId, userId])
   @@index([businessId, status, createdAt(sort: Desc)])
@@ -575,6 +586,11 @@ enum AuditAction {
   USER_ROLE_CHANGED
   BUSINESS_DELETED
   BUSINESS_SELF_DELETED
+  REVIEW_HIDDEN
+  REVIEW_RESTORED
+  REVIEW_REPORTS_DISMISSED
+  LISTING_REPORTS_DISMISSED
+  LISTING_REPORTS_ACTIONED
 
   @@map("audit_action")
 }
@@ -590,6 +606,7 @@ model AdminAuditLog {
   /// No foreign keys: the log outlives the user and business it refers to.
   targetUserId     String?     @map("target_user_id") @db.Uuid
   targetBusinessId String?     @map("target_business_id") @db.Uuid
+  targetReviewId   String?     @map("target_review_id") @db.Uuid
   summary          String?
   reason           String?
   createdAt        DateTime    @default(now()) @map("created_at")
@@ -615,4 +632,98 @@ model PendingFileDeletion {
   createdAt     DateTime  @default(now()) @map("created_at")
 
   @@map("pending_file_deletions")
+}
+
+// ---------------------------------------------------------------------------
+// Reports and rate limits
+// ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTIONED
+
+  @@map("report_status")
+}
+
+enum ReviewReportReason {
+  FAKE
+  OFFENSIVE
+  SPAM
+  NOT_A_CUSTOMER
+
+  @@map("review_report_reason")
+}
+
+/// A logged-in user's report of a review. At most one OPEN report per user per review
+/// (partial unique index in the migration).
+model ReviewReport {
+  id           String             @id @default(uuid(7)) @db.Uuid
+  reviewId     String             @map("review_id") @db.Uuid
+  reporterId   String             @map("reporter_id") @db.Uuid
+  reason       ReviewReportReason
+  status       ReportStatus       @default(OPEN)
+  resolvedById String?            @map("resolved_by_id") @db.Uuid
+  resolvedAt   DateTime?          @map("resolved_at")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter   Profile  @relation("ReviewReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy Profile? @relation("ReviewReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([reviewId, status])
+  @@index([reporterId])
+  @@index([resolvedById])
+  @@map("review_reports")
+}
+
+enum ListingReportReason {
+  SCAM
+  FAKE_PHOTOS
+  WRONG_CONTACT
+  OFFENSIVE
+  CLOSED
+  OTHER
+
+  @@map("listing_report_reason")
+}
+
+/// A logged-in user's report of a business listing. At most one OPEN report per user per
+/// business (partial unique index in the migration). Details are required for OTHER.
+model BusinessReport {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  businessId   String              @map("business_id") @db.Uuid
+  reporterId   String              @map("reporter_id") @db.Uuid
+  reason       ListingReportReason
+  details      String?
+  status       ReportStatus        @default(OPEN)
+  resolvedById String?             @map("resolved_by_id") @db.Uuid
+  resolvedAt   DateTime?           @map("resolved_at")
+  /// What the admin did, e.g. "Dismissed", "Listing suspended", "Owner suspended".
+  resolution   String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reporter   Profile  @relation("BusinessReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy Profile? @relation("BusinessReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([businessId, status])
+  @@index([reporterId])
+  @@index([resolvedById])
+  @@map("business_reports")
+}
+
+/// One row per rate-limited action (e.g. a contact form message or a review). `key` is a
+/// purpose plus a user id or a keyed hash of the IP address, never a raw IP. Old rows are
+/// removed by the daily job.
+model RateLimitHit {
+  id        BigInt   @id @default(autoincrement())
+  key       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([key, createdAt])
+  @@index([createdAt])
+  @@map("rate_limit_hits")
 }

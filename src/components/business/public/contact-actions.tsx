@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Check, Mail, MessageCircle, Phone, Share2 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { track } from "./tracking";
 
@@ -165,6 +166,12 @@ export function ContactCard({ contact, saveSlot }: { contact: ContactInfo; saveS
       </div>
       <p className="mt-4 text-xs text-gray-600">
         Tip: agree on price and timing before work starts. Never pay in full upfront.
+      </p>
+      <p className="mt-4 text-xs text-gray-700">
+        Never pay the full price upfront to a business you don&apos;t know.{" "}
+        <Link href="/safety" className="font-semibold text-brand-700 underline">
+          Read our safety tips
+        </Link>
       </p>
     </section>
   );

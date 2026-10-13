@@ -122,14 +122,14 @@ export function SignupForm({ next }: { next: string }) {
                 href="/terms"
                 className="font-medium text-brand-700 underline underline-offset-2"
               >
-                Terms of use
+                Terms of Service
               </Link>{" "}
               and{" "}
               <Link
                 href="/privacy"
                 className="font-medium text-brand-700 underline underline-offset-2"
               >
-                Privacy policy
+                Privacy Policy
               </Link>
               .
             </span>

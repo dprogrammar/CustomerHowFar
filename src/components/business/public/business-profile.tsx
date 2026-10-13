@@ -1,14 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import {
-  Clock3,
-  ExternalLink,
-  Eye,
-  MapPin,
-  MessageSquareText,
-  Pencil,
-  ShieldCheck,
-} from "lucide-react";
+import { Clock3, ExternalLink, Eye, MapPin, Pencil, ShieldCheck } from "lucide-react";
 import { getSiteUrl } from "@/config/site";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { PublicBusiness } from "@/lib/business/public";
@@ -26,6 +18,8 @@ import { ContactBar, ContactCard, type ContactInfo } from "./contact-actions";
 import { OpeningStatus, TodayMarker } from "./opening-status";
 import { PhotoGallery } from "./photo-gallery";
 import { SaveButton } from "./save-button";
+import { ReviewsSection, ReviewsSkeleton } from "@/components/reviews/reviews-section";
+import { Stars } from "@/components/reviews/stars";
 import { ViewTracker } from "./view-tracker";
 
 function initials(name: string) {
@@ -143,6 +137,16 @@ function structuredData(b: PublicBusiness, url: string, image: string | null) {
     },
     areaServed: b.state?.name,
     knowsAbout: b.services.length ? b.services : undefined,
+    aggregateRating:
+      b.reviewCount > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: Number(b.ratingAverage).toFixed(1),
+            reviewCount: b.reviewCount,
+            bestRating: 5,
+            worstRating: 1,
+          }
+        : undefined,
     sameAs: [b.instagramUrl, b.facebookUrl, b.tiktokUrl, b.websiteUrl].filter(Boolean),
     openingHoursSpecification: hours
       ? Object.entries(hours)
@@ -271,6 +275,28 @@ export async function BusinessProfile({
               </p>
               {b.tagline && <p className="mt-3 text-base text-gray-800 sm:text-lg">{b.tagline}</p>}
               {hours && <OpeningStatus hours={hours} className="mt-3" />}
+              {b.reviewCount > 0 && (
+                <a
+                  href="#reviews-title"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded text-sm text-gray-800 hover:underline"
+                >
+                  <Stars value={Number(b.ratingAverage)} />
+                  <span className="font-semibold">{Number(b.ratingAverage).toFixed(1)}</span>
+                  <span className="text-gray-700">
+                    ({b.reviewCount} review{b.reviewCount === 1 ? "" : "s"})
+                  </span>
+                </a>
+              )}
+              <p className="mt-4 flex items-start gap-2 rounded-lg bg-accent-50 p-3 text-sm text-accent-900 ring-1 ring-accent-200">
+                <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  Stay safe: agree the price first and never pay the full amount upfront to a
+                  business you don&apos;t know.{" "}
+                  <Link href="/safety" className="font-semibold underline">
+                    Safety tips
+                  </Link>
+                </span>
+              </p>
             </header>
 
             <div className="mt-8 space-y-8">
@@ -370,21 +396,18 @@ export async function BusinessProfile({
                 </section>
               )}
 
-              <section
-                aria-labelledby="reviews-title"
-                className="rounded-xl border border-dashed border-gray-300 bg-white p-5"
-              >
-                <h2
-                  id="reviews-title"
-                  className="flex items-center gap-2 text-lg font-semibold text-gray-900"
-                >
-                  <MessageSquareText aria-hidden="true" className="size-5 text-gray-500" />
-                  Reviews
-                </h2>
-                <p className="mt-1 text-sm text-gray-700">
-                  No reviews yet. Customer reviews are coming soon.
-                </p>
-              </section>
+              <Suspense fallback={<ReviewsSkeleton />}>
+                <ReviewsSection
+                  business={{
+                    id: b.id,
+                    slug: b.slug,
+                    name: b.name,
+                    ownerId: b.ownerId,
+                    status: b.status,
+                  }}
+                  interactive={isPublic}
+                />
+              </Suspense>
             </div>
           </div>
 

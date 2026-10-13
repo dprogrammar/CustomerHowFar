@@ -84,7 +84,9 @@ export async function deleteOwnAccountAction(
     if (error instanceof AccountRuleError) return { ok: false, error: error.message };
     throw error;
   }
-  for (const b of result.businesses) revalidatePublicBusiness(b.slug);
+  for (const slug of [...result.businesses.map((b) => b.slug), ...result.reviewedSlugs]) {
+    revalidatePublicBusiness(slug);
+  }
   after(() => deleteStoredFiles(result.files));
   // The session no longer exists; clear the cookies on this device.
   const supabase = await createClient();

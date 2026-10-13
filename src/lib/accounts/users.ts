@@ -10,6 +10,7 @@ import {
   setAuthAdminFlag,
   unbanAuthUser,
 } from "@/lib/supabase/admin";
+import { lockBusinessForReviews, recomputeRating } from "@/lib/reviews/server";
 import { assertNotLastAdmin } from "./admin-guard";
 import { AccountRuleError, deleteBusinessInTx, type DeletedBusiness } from "./business-deletion";
 
@@ -133,7 +134,12 @@ export async function changeUserRole(input: { userId: string; adminId: string; r
 
 // --- Deletion ------------------------------------------------------------------------------
 
-export type DeletedAccount = { businesses: DeletedBusiness[]; files: StoredFile[] };
+export type DeletedAccount = {
+  businesses: DeletedBusiness[];
+  files: StoredFile[];
+  /** Businesses whose rating changed because this user's reviews were deleted. */
+  reviewedSlugs: string[];
+};
 
 /**
  * Deletes a user's account (right to erasure), keeping only anonymized payment records:
@@ -210,7 +216,18 @@ export async function deleteUserAccount(input: {
         data: { userId: null, fullNameOnId: "Deleted account", nameReadByAdmin: null },
       });
       await tx.savedBusiness.deleteMany({ where: { userId: p.id } });
+      // Their reviews go, and the ratings of the businesses they reviewed are recomputed.
+      const reviewed = await tx.review.findMany({
+        where: { userId: p.id },
+        select: { businessId: true, business: { select: { slug: true } } },
+      });
       await tx.review.deleteMany({ where: { userId: p.id } });
+      for (const r of reviewed) {
+        await lockBusinessForReviews(tx, r.businessId);
+        await recomputeRating(tx, r.businessId);
+      }
+      await tx.reviewReport.deleteMany({ where: { reporterId: p.id } });
+      await tx.businessReport.deleteMany({ where: { reporterId: p.id } });
       await tx.contactEvent.deleteMany({ where: { userId: p.id } });
 
       await tx.adminAuditLog.create({
@@ -247,6 +264,7 @@ export async function deleteUserAccount(input: {
 
       return {
         businesses,
+        reviewedSlugs: reviewed.map((r) => r.business.slug),
         files: [
           ...businesses.flatMap((b) => b.files),
           ...proofs.map((x) => ({ publicId: x.proofPublicId!, private: true })),

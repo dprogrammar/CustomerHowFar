@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import type { BusinessCardData } from "@/lib/business/public";
 import { CategoryIcon } from "@/components/category-icon";
 import { CloudinaryImage } from "@/components/cloudinary-image";
+import { Stars } from "@/components/reviews/stars";
 import { IdBadge } from "./id-badge";
 
 function initials(name: string) {
@@ -81,6 +82,16 @@ export function BusinessCard({
           {business.idChecked && <IdBadge />}
         </div>
         <p className="mt-1 text-sm font-medium text-brand-700">{business.categoryName}</p>
+        {business.reviewCount > 0 && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-700">
+            <Stars value={business.ratingAverage} size="sm" />
+            <span className="font-medium text-gray-900">{business.ratingAverage.toFixed(1)}</span>
+            <span>
+              ({business.reviewCount}
+              <span className="sr-only"> review{business.reviewCount === 1 ? "" : "s"}</span>)
+            </span>
+          </p>
+        )}
         {business.tagline && (
           <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{business.tagline}</p>
         )}

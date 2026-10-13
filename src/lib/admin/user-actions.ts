@@ -148,7 +148,7 @@ export async function deleteUserAction(
   } catch (error) {
     return fail(error);
   }
-  revalidateSlugs(result.businesses.map((b) => b.slug));
+  revalidateSlugs([...result.businesses.map((b) => b.slug), ...result.reviewedSlugs]);
   after(() => deleteStoredFiles(result.files));
   refresh();
   return {

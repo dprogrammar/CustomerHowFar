@@ -8,6 +8,8 @@ import {
   ClipboardList,
   CreditCard,
   FilePen,
+  Flag,
+  MessageSquareWarning,
   IdCard,
   RefreshCcw,
   ShieldAlert,
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 import { getAdminOverview } from "@/lib/admin/queries";
 import { countTransfersToConfirm } from "@/lib/payments/queries";
+import { getReportCounts } from "@/lib/admin/report-queries";
 import { requireAdmin } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +30,11 @@ type Stat = { label: string; value: number; href?: string; icon: LucideIcon; urg
 
 async function Overview() {
   await requireAdmin();
-  const [c, transfers] = await Promise.all([getAdminOverview(), countTransfersToConfirm()]);
+  const [c, transfers, reports] = await Promise.all([
+    getAdminOverview(),
+    countTransfersToConfirm(),
+    getReportCounts(),
+  ]);
   const stats: Stat[] = [
     {
       label: "In review",
@@ -42,6 +49,20 @@ async function Overview() {
       href: "/admin/payments?tab=confirm",
       icon: Banknote,
       urgent: transfers > 0,
+    },
+    {
+      label: "Reported reviews",
+      value: reports.reviews,
+      href: "/admin/reports?tab=reviews",
+      icon: MessageSquareWarning,
+      urgent: reports.reviews > 0,
+    },
+    {
+      label: "Reported listings",
+      value: reports.listings,
+      href: "/admin/reports?tab=listings",
+      icon: Flag,
+      urgent: reports.listings > 0,
     },
     {
       label: "Identity checks",

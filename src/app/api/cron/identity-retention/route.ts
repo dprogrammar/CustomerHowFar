@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runIdentityRetention } from "@/lib/identity/server";
+import { pruneRateLimits } from "@/lib/rate-limit";
 import { processPendingFileDeletions } from "@/lib/storage/cleanup";
 
 const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
@@ -23,7 +24,11 @@ export async function GET(request: Request) {
     const result = await runIdentityRetention();
     // Also retry Cloudinary deletions that failed earlier (deleted businesses and accounts).
     const files = await processPendingFileDeletions();
-    return Response.json({ ok: true, ...result, files }, { headers: NO_STORE });
+    const rateLimitRowsPruned = await pruneRateLimits();
+    return Response.json(
+      { ok: true, ...result, files, rateLimitRowsPruned },
+      { headers: NO_STORE },
+    );
   } catch (error) {
     console.error(
       "[cron/identity-retention] failed:",
