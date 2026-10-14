@@ -4,9 +4,17 @@ import { useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { saveFaqAction, type HelpActionResult } from "@/lib/admin/help-actions";
-import { fillFacts, PLACEHOLDERS, type LiveFacts } from "@/lib/help/facts";
+import { CONDITIONAL_BLOCKS, fillFacts, PLACEHOLDERS, type LiveFacts } from "@/lib/help/facts";
 import { Markdown } from "@/lib/help/markdown";
-import { FAQ_CATEGORIES, FAQ_LIMITS, slugFromQuestion, type FaqCategoryKey } from "@/lib/help/rules";
+import {
+  FAQ_CATEGORIES,
+  FAQ_LIMITS,
+  FAQ_VISIBILITY,
+  isFaqVisible,
+  slugFromQuestion,
+  type FaqCategoryKey,
+  type FaqVisibilityKey,
+} from "@/lib/help/rules";
 import { FormAlert } from "@/components/auth/form-fields";
 import { proseClass } from "@/components/content/content-page";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,6 +28,7 @@ export type FaqFormValues = {
   answer: string;
   keywords: string;
   category: FaqCategoryKey;
+  visibility: FaqVisibilityKey;
   isActive: boolean;
 };
 
@@ -52,6 +61,8 @@ export function FaqForm({
   const ids = {
     question: useId(),
     category: useId(),
+    visibility: useId(),
+    visibilityHelp: useId(),
     answer: useId(),
     answerHelp: useId(),
     keywords: useId(),
@@ -82,7 +93,11 @@ export function FaqForm({
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      <form onSubmit={submit} noValidate className="space-y-5 rounded-xl border border-border bg-white p-4 sm:p-5">
+      <form
+        onSubmit={submit}
+        noValidate
+        className="space-y-5 rounded-xl border border-border bg-white p-4 sm:p-5"
+      >
         {result && !result.ok && <FormAlert status="error">{result.error}</FormAlert>}
 
         <div>
@@ -115,6 +130,27 @@ export function FaqForm({
         </div>
 
         <div>
+          <Label htmlFor={ids.visibility}>When to show it</Label>
+          <Select
+            id={ids.visibility}
+            value={v.visibility}
+            onChange={(e) => set("visibility", e.target.value as FaqVisibilityKey)}
+            aria-describedby={ids.visibilityHelp}
+          >
+            {FAQ_VISIBILITY.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+          <p id={ids.visibilityHelp} className="mt-1.5 text-xs text-gray-700">
+            The listing fee is {facts.paymentRequired ? "on" : "off"} right now, so this answer is{" "}
+            {isFaqVisible(v.visibility, facts.paymentRequired) ? "shown" : "hidden"}. Use
+            &ldquo;Only while the listing fee is on&rdquo; for anything about fees or payments.
+          </p>
+        </div>
+
+        <div>
           <Label htmlFor={ids.answer}>Answer</Label>
           <Textarea
             id={ids.answer}
@@ -140,6 +176,17 @@ export function FaqForm({
                 </li>
               ))}
             </ul>
+            <p>Show part of an answer only sometimes:</p>
+            <ul className="list-disc space-y-0.5 pl-5">
+              {CONDITIONAL_BLOCKS.map((b) => (
+                <li key={b.open}>
+                  <code>
+                    {b.open}…{b.close}
+                  </code>
+                  : {b.description}
+                </li>
+              ))}
+            </ul>
             <p>Never write bank account details here: they only appear on the payment page.</p>
           </div>
         </div>
@@ -154,9 +201,9 @@ export function FaqForm({
             aria-describedby={ids.keywordsHelp}
           />
           <p id={ids.keywordsHelp} className="mt-1.5 text-xs text-gray-700">
-            One per line or separated by commas: synonyms, Pidgin and common phrases (e.g. &ldquo;how
-            much e cost&rdquo;, &ldquo;register my shop&rdquo;). Helps the chat assistant find this
-            answer.
+            One per line or separated by commas: synonyms, Pidgin and common phrases (e.g.
+            &ldquo;how much e cost&rdquo;, &ldquo;register my shop&rdquo;). Helps the chat assistant
+            find this answer.
           </p>
         </div>
 
@@ -198,7 +245,9 @@ export function FaqForm({
           />
           <span>
             <span className="font-medium text-gray-900">Show this answer</span>
-            <span className="block text-gray-700">On the Help Centre and in the chat assistant.</span>
+            <span className="block text-gray-700">
+              On the Help Centre and in the chat assistant.
+            </span>
           </span>
         </label>
 

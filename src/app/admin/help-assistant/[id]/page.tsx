@@ -26,18 +26,14 @@ async function EditFaq({ params }: { params: PageProps<"/admin/help-assistant/[i
         answer: true,
         keywords: true,
         category: true,
+        visibility: true,
         isActive: true,
       },
     }),
     getLiveFacts(),
   ]);
   if (!entry) notFound();
-  return (
-    <FaqForm
-      facts={facts}
-      initial={{ ...entry, keywords: entry.keywords.join("\n") }}
-    />
-  );
+  return <FaqForm facts={facts} initial={{ ...entry, keywords: entry.keywords.join("\n") }} />;
 }
 
 export default function EditFaqPage(props: PageProps<"/admin/help-assistant/[id]">) {
@@ -51,7 +47,9 @@ export default function EditFaqPage(props: PageProps<"/admin/help-assistant/[id]
         Help assistant
       </Link>
       <h1 className="mb-4 text-2xl font-bold tracking-tight text-gray-900">Edit help answer</h1>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}>
+      <Suspense
+        fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}
+      >
         <EditFaq params={props.params} />
       </Suspense>
     </>

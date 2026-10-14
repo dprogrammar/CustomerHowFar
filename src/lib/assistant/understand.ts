@@ -7,6 +7,8 @@ import {
   AMBIGUOUS_STATE_NAMES,
   AREA_ALIASES,
   CATEGORY_TERMS,
+  COST_QUESTION,
+  CUSTOMER_PAYMENT,
   FILLERS,
   FIND_REQUEST,
   GOODBYE,
@@ -88,6 +90,11 @@ export function isStatusRequest(u: Understood) {
   // my listing?".
   if (/^why /.test(u.plain) && !/^why (is|cant|cannot) (i )?(see )?my /.test(u.plain)) return false;
   return STATUS_REQUEST.test(u.plain);
+}
+
+/** A question about what listing costs or how to pay for it (answered from the fee switch). */
+export function isCostQuestion(u: Understood) {
+  return COST_QUESTION.test(u.plain) && !CUSTOMER_PAYMENT.test(u.plain);
 }
 
 export function isFindRequest(u: Understood) {

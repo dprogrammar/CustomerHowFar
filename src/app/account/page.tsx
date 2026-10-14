@@ -6,6 +6,8 @@ import { logoutAction } from "@/lib/auth/actions";
 import { initials, requireUser } from "@/lib/auth/session";
 import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
 import { getIdentityState } from "@/lib/identity/server";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
+import { prisma } from "@/lib/prisma";
 import { DeleteAccount } from "@/components/account/delete-account";
 import { ProfileForm } from "@/components/account/profile-form";
 import { FormAlert } from "@/components/auth/form-fields";
@@ -34,7 +36,13 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
   const params = await searchParams;
   const notice = typeof params.updated === "string" ? NOTICES[params.updated] : undefined;
   const welcome = params.welcome === "1";
-  const { state: idState } = await getIdentityState(user.id);
+  const [{ state: idState }, feeOn, paymentCount] = await Promise.all([
+    getIdentityState(user.id),
+    isListingFeeOn(),
+    prisma.payment.count({ where: { userId: user.id } }),
+  ]);
+  // While listing is free, payments are only mentioned to people who actually made one.
+  const showKeptRecords = feeOn || paymentCount > 0;
   const memberSince = new Intl.DateTimeFormat("en-NG", { month: "long", year: "numeric" }).format(
     user.createdAt,
   );
@@ -164,13 +172,15 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
               <li>Your ID photo, selfie and saved businesses</li>
             </ul>
           </div>
-          <div>
-            <p className="font-medium text-gray-900">What is kept</p>
-            <p className="mt-1">
-              Records of listing fees you paid (amount, date, reference, method and business name),
-              without your name, email or phone, because we must keep financial records.
-            </p>
-          </div>
+          {showKeptRecords && (
+            <div>
+              <p className="font-medium text-gray-900">What is kept</p>
+              <p className="mt-1">
+                Records of listing fees you paid (amount, date, reference, method and business
+                name), without your name, email or phone, because we must keep financial records.
+              </p>
+            </div>
+          )}
           {user.role === "ADMIN" ? (
             <p className="rounded-lg bg-muted p-3">
               Admin accounts can&apos;t be deleted here. Ask another admin to remove your admin role

@@ -6,7 +6,8 @@ import { getPaymentConfig } from "@/lib/payments/config";
 import { METHOD_LABELS, availableMethods } from "@/lib/payments/methods";
 import { prisma } from "@/lib/prisma";
 import type { LiveFacts } from "./facts";
-import { FAQ_CATEGORIES, type FaqCategoryKey } from "./rules";
+import { FEE_SWITCH_TAG } from "@/lib/payments/fee-switch";
+import { FAQ_CATEGORIES, isFaqVisible, type FaqCategoryKey, type FaqVisibilityKey } from "./rules";
 
 /**
  * Help centre content. Cached across requests; admin edits call updateTag(HELP_TAGS.faqs) and
@@ -23,6 +24,7 @@ export type HelpFaq = {
   question: string;
   answer: string;
   category: FaqCategoryKey;
+  visibility: FaqVisibilityKey;
 };
 
 const CATEGORY_ORDER = new Map(FAQ_CATEGORIES.map((c, i) => [c.key, i]));
@@ -36,7 +38,14 @@ export async function getHelpFaqs(): Promise<HelpFaq[]> {
   const rows = await prisma.faqEntry.findMany({
     where: { isActive: true },
     orderBy: [{ sortOrder: "asc" }, { question: "asc" }],
-    select: { id: true, slug: true, question: true, answer: true, category: true },
+    select: {
+      id: true,
+      slug: true,
+      question: true,
+      answer: true,
+      category: true,
+      visibility: true,
+    },
   });
   return rows.sort(
     (a, b) => (CATEGORY_ORDER.get(a.category) ?? 9) - (CATEGORY_ORDER.get(b.category) ?? 9),
@@ -48,6 +57,7 @@ export async function getLiveFacts(): Promise<LiveFacts> {
   "use cache";
   cacheLife("hours");
   cacheTag(HELP_TAGS.facts);
+  cacheTag(FEE_SWITCH_TAG);
   cacheTag(CATALOG_TAGS.locations);
 
   const [states, config] = await Promise.all([getActiveStates(), getPaymentConfig()]);
@@ -60,4 +70,10 @@ export async function getLiveFacts(): Promise<LiveFacts> {
     ),
     contactEmail: OPERATOR.email,
   };
+}
+
+/** Entries to show right now (fee-only answers hidden while listing is free, and vice versa). */
+export async function getVisibleHelp() {
+  const [faqs, facts] = await Promise.all([getHelpFaqs(), getLiveFacts()]);
+  return { faqs: faqs.filter((f) => isFaqVisible(f.visibility, facts.paymentRequired)), facts };
 }

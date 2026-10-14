@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { ASSISTANT } from "@/config/assistant";
 import { getCurrentUser, getSessionUser } from "@/lib/auth/session";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { prisma } from "@/lib/prisma";
 import { ipKey, rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { getAssistantProvider, type AssistantContext } from "./provider";
@@ -54,14 +55,20 @@ export async function askAssistantAction(input: z.input<typeof askSchema>): Prom
   return getAssistantProvider().reply(data.text, context);
 }
 
-/** What the chat shows when it opens: "My listing status" only for business owners. */
-export async function assistantStartAction(): Promise<{ showListingStatus: boolean }> {
-  const session = await getSessionUser();
-  if (!session) return { showListingStatus: false };
+/**
+ * What the chat shows when it opens: "My listing status" only for business owners, and the
+ * listing-fee question only while the fee is switched on.
+ */
+export async function assistantStartAction(): Promise<{
+  showListingStatus: boolean;
+  feeOn: boolean;
+}> {
+  const [session, feeOn] = await Promise.all([getSessionUser(), isListingFeeOn()]);
+  if (!session) return { showListingStatus: false, feeOn };
   const owns = await prisma.business.count({
     where: { ownerId: session.id, status: { not: "DELETED" } },
   });
-  return { showListingStatus: owns > 0 };
+  return { showListingStatus: owns > 0, feeOn };
 }
 
 const feedbackSchema = z.object({ faqId: z.uuid(), helpful: z.boolean() });

@@ -23,11 +23,19 @@ export const ASSISTANT = {
   UNANSWERED_RETENTION_DAYS: 180,
 } as const;
 
-/** Quick questions offered when the chat opens. `slug` answers straight from that help entry. */
-export const QUICK_QUESTIONS: { label: string; slug?: string; action?: "find" }[] = [
+/**
+ * Quick questions offered when the chat opens. `slug` answers straight from that help entry.
+ * `feeOnly`: shown only while the listing fee is switched on (never while listing is free).
+ */
+export const QUICK_QUESTIONS: {
+  label: string;
+  slug?: string;
+  action?: "find";
+  feeOnly?: boolean;
+}[] = [
   { label: "How do I list my business?", slug: "how-to-list" },
   { label: "What does 'ID submitted' mean?", slug: "id-submitted" },
-  { label: "How much is the listing fee?", slug: "listing-fee" },
+  { label: "How much is the listing fee?", slug: "listing-fee", feeOnly: true },
   { label: "Which states are you in?", slug: "which-states" },
   { label: "How do I stay safe?", slug: "stay-safe" },
   { label: "Find a business", action: "find" },

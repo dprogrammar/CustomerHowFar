@@ -4,6 +4,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/session";
 import { countOwnedBusinesses } from "@/lib/business/queries";
 import { MAX_BUSINESSES_PER_USER } from "@/lib/business/rules";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { getActiveCategories } from "@/lib/data/catalog";
 import { liveStatesText } from "@/components/service-areas/live-states";
 import { FormAlert } from "@/components/auth/form-fields";
@@ -19,10 +20,11 @@ export const metadata: Metadata = {
 
 async function NewBusinessContent() {
   const user = await requireUser("/business/new");
-  const [count, categories, live] = await Promise.all([
+  const [count, categories, live, feeOn] = await Promise.all([
     countOwnedBusinesses(user.id),
     getActiveCategories(),
     liveStatesText(),
+    isListingFeeOn(),
   ]);
 
   if (count >= MAX_BUSINESSES_PER_USER) {
@@ -44,7 +46,11 @@ async function NewBusinessContent() {
   return (
     <WizardFrame
       title="List your business"
-      description="It's free to start and takes about 5 minutes. Your progress is saved after each step."
+      description={
+        feeOn
+          ? "It's free to start and takes about 5 minutes. Your progress is saved after each step."
+          : "Listing is free and takes about 5 minutes. Your progress is saved after each step."
+      }
       backToDashboard={count > 0}
     >
       <p className="mb-5 rounded-lg bg-brand-50 p-3 text-sm text-brand-900 ring-1 ring-brand-200">

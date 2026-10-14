@@ -10,6 +10,22 @@ export const FAQ_CATEGORIES: { key: FaqCategoryKey; label: string; anchor: strin
   { key: "ACCOUNT", label: "Your account", anchor: "your-account" },
 ];
 
+export type FaqVisibilityKey = "ALWAYS" | "FEE_ON" | "FEE_OFF";
+
+/** When an entry is shown, depending on the admin's listing-fee switch. */
+export const FAQ_VISIBILITY: { key: FaqVisibilityKey; label: string }[] = [
+  { key: "ALWAYS", label: "Always" },
+  { key: "FEE_ON", label: "Only while the listing fee is on" },
+  { key: "FEE_OFF", label: "Only while listing is free (fee off)" },
+];
+
+export function isFaqVisible(visibility: FaqVisibilityKey, feeOn: boolean) {
+  return visibility === "ALWAYS" || (visibility === "FEE_ON") === feeOn;
+}
+
+/** While listing is free, the chat answers any cost or payment question with just this entry. */
+export const FREE_TO_LIST_SLUG = "free-to-list";
+
 export const FAQ_LIMITS = {
   questionMin: 5,
   questionMax: 160,

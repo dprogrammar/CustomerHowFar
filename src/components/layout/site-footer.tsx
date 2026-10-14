@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cacheLife } from "next/cache";
 import { FOOTER_NAV } from "@/config/navigation";
 import { siteConfig } from "@/config/site";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { Container } from "@/components/ui/container";
 import { Logo } from "./logo";
 
@@ -11,7 +12,9 @@ async function CopyrightYear() {
   return <>{new Date().getFullYear()}</>;
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  // While listing is free, fee links are hidden (the switch is cached and tagged).
+  const feeOn = await isListingFeeOn();
   return (
     <footer className="border-t border-border bg-gray-950 text-gray-300">
       <Container className="py-12">
@@ -26,17 +29,19 @@ export function SiteFooter() {
               <nav key={section.title} aria-label={section.title}>
                 <h2 className="text-sm font-semibold text-white">{section.title}</h2>
                 <ul className="mt-3 space-y-1">
-                  {section.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        prefetch={false}
-                        className="inline-block rounded py-1.5 text-sm text-gray-400 hover:text-white"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
+                  {section.links
+                    .filter((link) => feeOn || !link.feeOnly)
+                    .map((link) => (
+                      <li key={link.href}>
+                        <Link
+                          href={link.href}
+                          prefetch={false}
+                          className="inline-block rounded py-1.5 text-sm text-gray-400 hover:text-white"
+                        >
+                          {link.label}
+                        </Link>
+                      </li>
+                    ))}
                 </ul>
               </nav>
             ))}

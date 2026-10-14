@@ -35,8 +35,7 @@ import { cn } from "@/lib/utils";
 
 type AskInput = Parameters<typeof askAssistantAction>[0];
 type Message =
-  | { id: number; from: "user"; text: string }
-  | { id: number; from: "bot"; reply: AssistantReply };
+  { id: number; from: "user"; text: string } | { id: number; from: "bot"; reply: AssistantReply };
 
 const GREETING: AssistantReply = {
   kind: "text",
@@ -57,6 +56,8 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
   const [messages, setMessages] = useState<Message[]>([{ id: 0, from: "bot", reply: GREETING }]);
   const [text, setText] = useState("");
   const [showStatus, setShowStatus] = useState(false);
+  // Unknown until the server says; fee-only questions stay hidden until then.
+  const [feeOn, setFeeOn] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -71,11 +72,15 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
-  // Offer "My listing status" to business owners.
+  // Offer "My listing status" to business owners, and fee questions only while the fee is on.
   useEffect(() => {
     let alive = true;
     assistantStartAction()
-      .then((r) => alive && setShowStatus(r.showListingStatus))
+      .then((r) => {
+        if (!alive) return;
+        setShowStatus(r.showListingStatus);
+        setFeeOn(r.feeOn);
+      })
       .catch(() => {});
     return () => {
       alive = false;
@@ -182,14 +187,14 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
               <UserBubble key={m.id} text={m.text} />
             ) : (
               <BotBubble key={m.id}>
-                <ReplyView
-                  reply={m.reply}
-                  onAsk={ask}
-                  onNavigate={onClose}
-                  disabled={pending}
-                />
+                <ReplyView reply={m.reply} onAsk={ask} onNavigate={onClose} disabled={pending} />
                 {i === 0 && (
-                  <QuickQuestions showStatus={showStatus} onAsk={ask} disabled={pending} />
+                  <QuickQuestions
+                    showStatus={showStatus}
+                    feeOn={feeOn}
+                    onAsk={ask}
+                    disabled={pending}
+                  />
                 )}
               </BotBubble>
             ),
@@ -287,29 +292,31 @@ function BotBubble({ children, typing }: { children: React.ReactNode; typing?: b
 
 function QuickQuestions({
   showStatus,
+  feeOn,
   onAsk,
   disabled,
 }: {
   showStatus: boolean;
+  feeOn: boolean;
   onAsk: (input: AskInput, shown: string) => void;
   disabled: boolean;
 }) {
   return (
     <div role="group" aria-label="Quick questions" className="mt-3 flex flex-wrap gap-2">
-        {showStatus && (
-          <Chip disabled={disabled} onClick={() => onAsk({ action: "status" }, "My listing status")}>
-            My listing status
-          </Chip>
-        )}
-        {QUICK_QUESTIONS.map((q) => (
-          <Chip
-            key={q.label}
-            disabled={disabled}
-            onClick={() => onAsk(q.slug ? { slug: q.slug } : { action: "find" }, q.label)}
-          >
-            {q.label}
-          </Chip>
-        ))}
+      {showStatus && (
+        <Chip disabled={disabled} onClick={() => onAsk({ action: "status" }, "My listing status")}>
+          My listing status
+        </Chip>
+      )}
+      {QUICK_QUESTIONS.filter((q) => feeOn || !q.feeOnly).map((q) => (
+        <Chip
+          key={q.label}
+          disabled={disabled}
+          onClick={() => onAsk(q.slug ? { slug: q.slug } : { action: "find" }, q.label)}
+        >
+          {q.label}
+        </Chip>
+      ))}
     </div>
   );
 }
@@ -518,8 +525,12 @@ function StatusCard({ item, onNavigate }: { item: ListingStatusItem; onNavigate:
         </span>
       </p>
       <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
-        <dt className="text-gray-600">Payment</dt>
-        <dd>{item.payment}</dd>
+        {item.payment && (
+          <>
+            <dt className="text-gray-600">Payment</dt>
+            <dd>{item.payment}</dd>
+          </>
+        )}
         <dt className="text-gray-600">ID check</dt>
         <dd>{item.idCheck}</dd>
         <dt className="text-gray-600">Next step</dt>

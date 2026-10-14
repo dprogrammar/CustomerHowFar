@@ -1,5 +1,6 @@
 import { Images, MessageCircle, Search, type LucideIcon } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { SectionHeading } from "./section-heading";
 
 const STEPS: { title: string; description: string; icon: LucideIcon }[] = [
@@ -20,7 +21,9 @@ const STEPS: { title: string; description: string; icon: LucideIcon }[] = [
   },
 ];
 
-export function HowItWorks() {
+export async function HowItWorks() {
+  // While listing is free (fee switch off), say it's free for everyone.
+  const feeOn = await isListingFeeOn();
   return (
     <section id="how-it-works" aria-labelledby="how-title" className="bg-surface py-12 sm:py-16">
       <Container>
@@ -28,6 +31,7 @@ export function HowItWorks() {
           id="how-title"
           eyebrow="How it works"
           title="Get the job done in 3 easy steps"
+          description={feeOn ? undefined : "Free for customers, and free for businesses to list."}
           align="center"
         />
 

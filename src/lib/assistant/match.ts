@@ -35,7 +35,8 @@ type Row = {
 /** Phrase similarity below this is mostly shared filler words ("you", "my"): ignored. */
 const PHRASE_FLOOR = 0.45;
 
-export async function matchFaqs(u: Understood, limit = 5): Promise<FaqHit[]> {
+/** `feeOn`: the listing-fee switch; entries hidden under the current setting are never matched. */
+export async function matchFaqs(u: Understood, feeOn: boolean, limit = 5): Promise<FaqHit[]> {
   const words = u.words.filter((w) => /^[a-z0-9]+$/.test(w));
   if (words.length === 0) return [];
   // Prefix matching only for longer words: "app" must not match "approval".
@@ -62,6 +63,7 @@ export async function matchFaqs(u: Understood, limit = 5): Promise<FaqHit[]> {
       FROM faq_entries f
       CROSS JOIN unnest(${words}::text[]) AS w
       WHERE f.is_active
+        AND f.visibility IN ('ALWAYS', ${feeOn ? "FEE_ON" : "FEE_OFF"}::faq_visibility)
     ) per_word
     GROUP BY id, slug`;
 

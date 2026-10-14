@@ -12,6 +12,7 @@ import {
 } from "@/lib/email/notifications";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
 import { HELP_TAGS } from "@/lib/help/server";
+import { FEE_SWITCH_TAG } from "@/lib/payments/fee-switch";
 import { prisma } from "@/lib/prisma";
 import { approveBusinessInTx, RuleError, StaleError } from "./moderation";
 
@@ -359,7 +360,12 @@ export async function updateSettingsAction(
   });
 
   // The listing fee and payment methods appear in help answers (/help and the chat).
-  if (changes.length > 0) updateTag(HELP_TAGS.facts);
+  // Turning the listing fee on or off also changes wording on /help, the homepage, onboarding,
+  // the footer and the chat (src/lib/payments/fee-switch.ts).
+  if (changes.length > 0) {
+    updateTag(HELP_TAGS.facts);
+    updateTag(FEE_SWITCH_TAG);
+  }
   refresh();
   if (changes.length === 0) return { ok: true, message: "No changes to save." };
   return { ok: true, message: "Settings saved. They apply immediately." };

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CircleCheck, Store } from "lucide-react";
 import { ROUTES } from "@/config/navigation";
+import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 
@@ -10,7 +11,11 @@ const BENEFITS = [
   "Get found by people in your state",
 ];
 
-export function BusinessCta() {
+/** While listing is free (fee switch off), says so first. */
+const FREE_BENEFIT = "Free to list your business";
+
+export async function BusinessCta() {
+  const benefits = (await isListingFeeOn()) ? BENEFITS : [FREE_BENEFIT, ...BENEFITS];
   return (
     <section aria-labelledby="cta-title" className="py-4 sm:py-8">
       <Container>
@@ -30,7 +35,7 @@ export function BusinessCta() {
               Showcase your work to thousands of customers
             </h2>
             <ul className="mt-5 space-y-2.5 text-brand-50">
-              {BENEFITS.map((benefit) => (
+              {benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-2.5">
                   <CircleCheck
                     aria-hidden="true"

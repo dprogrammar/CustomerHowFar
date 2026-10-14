@@ -154,7 +154,12 @@ policies, so the public Supabase Data API cannot read or write anything.
   changes. `searchVector` (full-text) and `matchTerms` (words for trigram typo matching) are
   maintained by a trigger. /help and the chat both read these rows, so they always agree.
   Answers can contain live-fact placeholders (`{{listing_fee}}`, `{{live_states}}`...) filled
-  from `AppSetting` and `State` when shown (never bank details).
+  from `AppSetting` and `State` when shown (never bank details), and `{{#fee_on}}...{{/fee_on}}`
+  blocks shown only while the listing fee is on.
+- `FaqEntry.visibility` (ALWAYS / FEE_ON / FEE_OFF) follows the admin's listing-fee switch: while
+  it's off, fee and payment answers are hidden everywhere and "Is it free to list?" is shown. The
+  footer, homepage, onboarding and chat read the switch through `isListingFeeOn()` (cached and
+  tagged); /admin/settings expires the tag so wording changes immediately.
 - `UnansweredQuestion`: a question the chat couldn't answer, stored anonymously (emails, phone
   numbers, long numbers and names removed; no user, no IP, random v4 id, day only). Grouped by
   similarity in /admin/help-assistant; deleted after 180 days by the daily job.

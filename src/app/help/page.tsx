@@ -4,19 +4,20 @@ import { ChevronDown } from "lucide-react";
 import { fillFacts, type LiveFacts } from "@/lib/help/facts";
 import { Markdown } from "@/lib/help/markdown";
 import { FAQ_CATEGORIES } from "@/lib/help/rules";
-import { getHelpFaqs, getLiveFacts, type HelpFaq } from "@/lib/help/server";
+import { getVisibleHelp, type HelpFaq } from "@/lib/help/server";
 import { ContentPage } from "@/components/content/content-page";
 import { OpenHashDetails } from "@/components/content/open-hash-details";
 
 export const metadata: Metadata = {
   title: "Help centre",
   description:
-    "Answers for customers and businesses: finding and contacting businesses, staying safe, listing your business, the review process, the listing fee and the ID check.",
+    "Answers for customers and businesses: finding and contacting businesses, staying safe, listing your business, the review process and the ID check.",
   alternates: { canonical: "/help" },
 };
 
 // The questions and answers live in the database (admin: Help assistant), shared with the chat
-// assistant. Each entry's slug is its anchor, e.g. /help#listing-fee.
+// assistant. Each entry's slug is its anchor, e.g. /help#listing-fee. While the listing fee is
+// switched off, fee and payment answers are hidden and the "free to list" answer shows instead.
 
 function FaqList({ items, facts }: { items: HelpFaq[]; facts: LiveFacts }) {
   return (
@@ -40,7 +41,7 @@ function FaqList({ items, facts }: { items: HelpFaq[]; facts: LiveFacts }) {
 }
 
 export default async function HelpPage() {
-  const [faqs, facts] = await Promise.all([getHelpFaqs(), getLiveFacts()]);
+  const { faqs, facts } = await getVisibleHelp();
   const sections = FAQ_CATEGORIES.map((c) => ({
     ...c,
     items: faqs.filter((f) => f.category === c.key),

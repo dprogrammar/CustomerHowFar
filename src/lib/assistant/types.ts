@@ -20,7 +20,8 @@ export type ListingStatusItem = {
   name: string;
   statusLabel: string;
   tone: "neutral" | "accent" | "info" | "success" | "danger" | "dark";
-  payment: string;
+  /** Null while listing is free and the business has no payment record (nothing to say). */
+  payment: string | null;
   idCheck: string;
   /** Admin's note when changes were requested or the listing was suspended. */
   note: string | null;

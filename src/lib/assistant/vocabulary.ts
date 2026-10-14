@@ -351,3 +351,11 @@ export const AMBIGUOUS_LGA_NAMES = new Set([
 export const LOCATION_PREPOSITIONS = new Set([
   "in", "at", "for", "around", "near", "from", "inside", "within", "reach", "to", "side", "area",
 ]);
+
+/** Asking what listing costs or how to pay for it ("is there a fee", "how much to list"). */
+export const COST_QUESTION =
+  /\b(fee|fees|price|prices|pricing|cost|costs|charge|charges|how much|subscription|refund|refunds|bank transfer|bank details|account number|receipt|pay for (my |the |a )?(listing|business|shop)|pay to list|payment for (my |the |a )?(listing|business)|listing payment)\b/;
+
+/** Questions about customers paying a business (safety advice), not the listing fee. */
+export const CUSTOMER_PAYMENT =
+  /\b(customer|customers|upfront|deposit|advance|part payment|balance|pay (the|a) (business|worker|artisan|plumber|tailor)|scam|scammed|refund my money)\b/;

@@ -48,7 +48,7 @@ export async function listingStatusReply(userId: string | null): Promise<Assista
         ? "Not paid yet"
         : config.paymentRequired
           ? "Not needed yet"
-          : "No fee needed";
+          : null;
 
     let nextStep = "";
     let action: ListingStatusItem["action"] = null;

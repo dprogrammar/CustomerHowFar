@@ -808,6 +808,15 @@ enum FaqCategory {
   @@map("faq_category")
 }
 
+/// When a help entry is shown: always, or only while the listing fee switch is on/off.
+enum FaqVisibility {
+  ALWAYS
+  FEE_ON
+  FEE_OFF
+
+  @@map("faq_visibility")
+}
+
 /// A help-centre question and answer. Shown on /help and used by the HowFar Assistant chat, so
 /// both always say the same thing. Answers are simple markdown and may contain live-fact
 /// placeholders (e.g. {{listing_fee}}) filled from the database when shown.
@@ -822,6 +831,9 @@ model FaqEntry {
   keywords        String[]                 @default([])
   category        FaqCategory
   isActive        Boolean                  @default(true) @map("is_active")
+  /// Fee-related answers are shown only while the listing fee is on (AppSetting.paymentRequired);
+  /// "free to list" answers only while it is off.
+  visibility      FaqVisibility            @default(ALWAYS)
   sortOrder       Int                      @default(0) @map("sort_order")
   /// Chat statistics: times given as the answer, and "Did this help?" votes.
   timesShown      Int                      @default(0) @map("times_shown")

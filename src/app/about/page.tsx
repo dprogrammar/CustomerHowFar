@@ -25,7 +25,7 @@ const VALUES = [
   {
     icon: MessageCircle,
     title: "Direct contact",
-    text: "Talk to the business yourself on WhatsApp or by phone. No middlemen, no booking fees.",
+    text: "Talk to the business yourself on WhatsApp or by phone. No middlemen, and it's free to use.",
   },
 ];
 

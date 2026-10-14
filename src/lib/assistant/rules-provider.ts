@@ -3,7 +3,8 @@ import { ASSISTANT } from "@/config/assistant";
 import { searchBusinesses, type BusinessCardData } from "@/lib/business/public";
 import { getActiveCategories, getLgasGroupedByState, getStates } from "@/lib/data/catalog";
 import { fillFacts } from "@/lib/help/facts";
-import { getHelpFaqs, getLiveFacts, type HelpFaq } from "@/lib/help/server";
+import { FREE_TO_LIST_SLUG } from "@/lib/help/rules";
+import { getHelpFaqs, getVisibleHelp, type HelpFaq } from "@/lib/help/server";
 import { searchHref } from "@/lib/search/url";
 import { formatNames } from "@/lib/service-areas/rules";
 import { ANSWER_MIN_SCORE, RELATED_MIN_SCORE, countShown, matchFaqs } from "./match";
@@ -14,6 +15,7 @@ import {
   detectCategory,
   detectLocation,
   detectSmallTalk,
+  isCostQuestion,
   isFindRequest,
   isServiceRequest,
   isStatusRequest,
@@ -62,8 +64,11 @@ async function answerReply(
   faq: HelpFaq,
   options: { preferredRelated?: string[]; note?: string; links?: ChatLink[] } = {},
 ): Promise<AssistantReply> {
-  const [facts, all] = await Promise.all([getLiveFacts(), getHelpFaqs()]);
+  const { faqs, facts } = await getVisibleHelp();
   await countShown(faq.id);
+  // While listing is free, cost and payment questions get just this short answer: no fee
+  // details, related questions or links to the fee terms.
+  if (faq.slug === FREE_TO_LIST_SLUG) return { kind: "text", text: fillFacts(faq.answer, facts) };
   return {
     kind: "answer",
     faqId: faq.id,
@@ -72,13 +77,18 @@ async function answerReply(
     markdown: fillFacts(faq.answer, facts),
     note: options.note,
     links: options.links,
-    related: relatedFor(faq, all, options.preferredRelated),
+    related: relatedFor(faq, faqs, options.preferredRelated),
   };
 }
 
 /** A help entry chosen directly (quick question or related question). */
 export async function answerBySlug(slug: string): Promise<AssistantReply> {
-  const faq = (await getHelpFaqs()).find((f) => f.slug === slug);
+  const { faqs } = await getVisibleHelp();
+  // A fee answer asked for while listing is free (e.g. from an old page) -> the free answer.
+  const hidden = (await getHelpFaqs()).find((f) => f.slug === slug && !faqs.includes(f));
+  const faq =
+    faqs.find((f) => f.slug === slug) ??
+    (hidden?.visibility === "FEE_ON" ? faqs.find((f) => f.slug === FREE_TO_LIST_SLUG) : undefined);
   if (!faq) {
     return {
       kind: "fallback",
@@ -222,11 +232,18 @@ export const rulesProvider: AssistantProvider = {
       };
     }
 
-    const hits = await matchFaqs(u);
+    const { faqs, facts } = await getVisibleHelp();
+    // Cost and payment questions: the full fee answer while the fee is on; while listing is
+    // free, only the short "it's free" answer (no future fees, transfers, receipts or refunds).
+    if (isCostQuestion(u)) {
+      const costSlug = facts.paymentRequired ? "listing-fee" : FREE_TO_LIST_SLUG;
+      const costFaq = faqs.find((f) => f.slug === costSlug);
+      if (costFaq) return answerReply(costFaq);
+    }
+    const hits = await matchFaqs(u, facts.paymentRequired);
     const best = hits[0];
     if (best && best.score >= ANSWER_MIN_SCORE) {
-      const all = await getHelpFaqs();
-      const faq = all.find((f) => f.id === best.id);
+      const faq = faqs.find((f) => f.id === best.id);
       if (faq) {
         const preferredRelated = hits
           .slice(1)

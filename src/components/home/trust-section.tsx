@@ -18,7 +18,7 @@ const POINTS: { title: string; description: string; icon: LucideIcon }[] = [
   {
     title: "Direct contact",
     description:
-      "Talk to the business yourself on WhatsApp or by phone. No middlemen and no booking fees.",
+      "Talk to the business yourself on WhatsApp or by phone. No middlemen, and it's free to use.",
     icon: MessageCircle,
   },
 ];

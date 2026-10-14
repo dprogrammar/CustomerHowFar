@@ -12,7 +12,11 @@ import { FaqForm } from "@/components/admin/faq-form";
 export const metadata: Metadata = { title: "Add a help answer" };
 
 /** "Add as a help answer" from an unanswered question pre-fills the question. */
-async function NewFaq({ searchParams }: { searchParams: PageProps<"/admin/help-assistant/new">["searchParams"] }) {
+async function NewFaq({
+  searchParams,
+}: {
+  searchParams: PageProps<"/admin/help-assistant/new">["searchParams"];
+}) {
   await requireAdmin();
   const from = readParam((await searchParams).from, 40);
   const [facts, groups] = await Promise.all([
@@ -38,6 +42,7 @@ async function NewFaq({ searchParams }: { searchParams: PageProps<"/admin/help-a
           answer: "",
           keywords: group ? group.examples.slice(1).join("\n") : "",
           category: "CUSTOMERS",
+          visibility: "ALWAYS",
           isActive: true,
         }}
       />
@@ -56,7 +61,9 @@ export default function NewFaqPage(props: PageProps<"/admin/help-assistant/new">
         Help assistant
       </Link>
       <h1 className="mb-4 text-2xl font-bold tracking-tight text-gray-900">Add a help answer</h1>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}>
+      <Suspense
+        fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}
+      >
         <NewFaq searchParams={props.searchParams} />
       </Suspense>
     </>

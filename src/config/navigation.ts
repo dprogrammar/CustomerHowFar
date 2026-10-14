@@ -28,7 +28,8 @@ export const ROUTES = {
   cookies: "/privacy#cookies",
 } as const;
 
-export type NavLink = { label: string; href: string };
+/** `feeOnly`: shown only while the listing fee is switched on (hidden while listing is free). */
+export type NavLink = { label: string; href: string; feeOnly?: boolean };
 
 export const MAIN_NAV: NavLink[] = [
   { label: "Browse", href: ROUTES.search },
@@ -48,7 +49,7 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
     title: "For Businesses",
     links: [
       { label: "List your business", href: ROUTES.listBusiness },
-      { label: "Listing fee", href: ROUTES.pricing },
+      { label: "Listing fee", href: ROUTES.pricing, feeOnly: true },
       { label: "Business guide", href: ROUTES.businessGuide },
     ],
   },

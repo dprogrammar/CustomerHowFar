@@ -37,6 +37,7 @@ const saveSchema = z.object({
     .max(FAQ_LIMITS.answerMax, `Use ${FAQ_LIMITS.answerMax} characters or fewer.`),
   keywords: z.string().max(5000),
   category: CATEGORY,
+  visibility: z.enum(["ALWAYS", "FEE_ON", "FEE_OFF"]),
   isActive: z.boolean(),
   /** Unanswered questions this entry answers (deleted once it's saved). */
   resolveIds: z.array(z.uuid()).max(1000).optional(),
@@ -56,7 +57,7 @@ export async function saveFaqAction(input: z.input<typeof saveSchema>): Promise<
       fieldErrors: z.flattenError(parsed.error).fieldErrors,
     };
   }
-  const { id, question, slug, answer, category, isActive, resolveIds } = parsed.data;
+  const { id, question, slug, answer, category, visibility, isActive, resolveIds } = parsed.data;
   const keywords = parseKeywords(parsed.data.keywords);
 
   try {
@@ -65,7 +66,7 @@ export async function saveFaqAction(input: z.input<typeof saveSchema>): Promise<
         // The slug is the /help anchor other pages link to, so it never changes once created.
         return tx.faqEntry.update({
           where: { id },
-          data: { question, answer, keywords, category, isActive },
+          data: { question, answer, keywords, category, visibility, isActive },
           select: { id: true },
         });
       }
@@ -77,6 +78,7 @@ export async function saveFaqAction(input: z.input<typeof saveSchema>): Promise<
           answer,
           keywords,
           category,
+          visibility,
           isActive,
           sortOrder: (last._max.sortOrder ?? 0) + 10,
         },

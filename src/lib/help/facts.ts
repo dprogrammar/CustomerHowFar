@@ -27,6 +27,12 @@ export const PLACEHOLDERS: { key: string; description: string }[] = [
   { key: "contact_email", description: "Our contact email address" },
 ];
 
+/** Text shown only while the listing fee is on, or only while listing is free. */
+export const CONDITIONAL_BLOCKS: { open: string; close: string; description: string }[] = [
+  { open: "{{#fee_on}}", close: "{{/fee_on}}", description: "only while the listing fee is on" },
+  { open: "{{#fee_off}}", close: "{{/fee_off}}", description: "only while listing is free" },
+];
+
 export function formatFee(naira: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -38,12 +44,19 @@ export function formatFee(naira: number) {
 export function feeStatusSentence(f: LiveFacts) {
   return f.paymentRequired
     ? `Listing has a one-time fee of **${formatFee(f.listingFeeNaira)}** per business, paid before your listing is reviewed.`
-    : "Listing is **free** right now: the listing fee is switched off. If we switch it on, you'll pay a one-time fee before your listing is reviewed, and the amount will be shown on the payment page.";
+    : "Listing your business is **free**.";
 }
 
-/** Replaces {{placeholders}} with live values. Unknown placeholders are left as they are. */
+/**
+ * Keeps or drops {{#fee_on}}...{{/fee_on}} and {{#fee_off}}...{{/fee_off}} blocks, then replaces
+ * {{placeholders}} with live values. Unknown placeholders are left as they are.
+ */
 export function fillFacts(markdown: string, f: LiveFacts) {
-  return markdown.replace(/\{\{([a-z_]+)\}\}/g, (all, key: string) => {
+  const conditional = markdown.replace(
+    /\{\{#fee_(on|off)\}\}([\s\S]*?)\{\{\/fee_\1\}\}/g,
+    (_all, which: string, body: string) => ((which === "on") === f.paymentRequired ? body : ""),
+  );
+  return conditional.replace(/\{\{([a-z_]+)\}\}/g, (all, key: string) => {
     switch (key) {
       case "live_states":
         return formatNames(f.liveStates) || "Lagos";
