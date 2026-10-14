@@ -24,14 +24,15 @@ Open http://localhost:3000 in your browser.
 
 ## Scripts
 
-| Command                | Description                      |
-| ---------------------- | -------------------------------- |
-| `npm run dev`          | Start the development server     |
-| `npm run build`        | Create a production build        |
-| `npm run start`        | Run the production build         |
-| `npm run lint`         | Lint the code with ESLint        |
-| `npm run format`       | Format the code with Prettier    |
-| `npm run format:check` | Check formatting without writing |
+| Command                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `npm run dev`          | Start the development server                     |
+| `npm run build`        | Create a production build                        |
+| `npm run start`        | Run the production build                         |
+| `npm run lint`         | Lint the code with ESLint                        |
+| `npm run format`       | Format the code with Prettier                    |
+| `npm run format:check` | Check formatting without writing                 |
+| `npm run test:start`   | Check that /start (the QR code page) still works |
 
 ## Project structure
 
@@ -45,6 +46,10 @@ src/
 ```
 
 ## Operations
+
+> **Never remove or rename `/start`; it is printed on QR code flyers. If it must move, keep
+> `/start` working with a permanent redirect.** `npm run test:start` fails if `/start` stops
+> returning a working page (set `BASE_URL` to check the live site).
 
 - **Daily job** (`/api/cron/daily`, Vercel Cron at 03:00 UTC, protected by `CRON_SECRET`): ID
   image retention, retries of failed file deletions, rate-limit cleanup and orphaned-upload

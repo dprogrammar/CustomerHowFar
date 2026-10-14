@@ -1,3 +1,6 @@
+// NEVER REMOVE OR RENAME /start: it is printed on QR code flyers. If it must move, keep /start
+// working with a permanent redirect (308) in next.config.ts. Guarded by tests/start-page.test.mjs
+// (npm run test:start).
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { BadgeCheck, Images, MessageCircle, ShieldCheck } from "lucide-react";
