@@ -6,7 +6,12 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
-import { notifyAdminOfListingReport, notifyNewReview } from "@/lib/email/notifications";
+import {
+  notifyAdminOfListingReport,
+  notifyAdminOfReviewReport,
+  notifyNewReview,
+  notifyOwnerReply,
+} from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import {
@@ -151,6 +156,8 @@ export async function ownerReplyAction(
     data: { ownerReply: reply, ownerReplyAt: reply ? new Date() : null },
   });
   revalidatePublicBusiness(review.business.slug);
+  // Tell the reviewer about a new reply (not about edits or removals).
+  if (reply && !review.ownerReply) after(() => notifyOwnerReply(review.id));
   refresh();
   return {
     ok: true,
@@ -194,6 +201,7 @@ export async function reportReviewAction(
     }
     throw error;
   }
+  after(() => notifyAdminOfReviewReport(review.id));
   return { ok: true, message: "Thanks. Our team will review this report." };
 }
 

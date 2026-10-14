@@ -12,4 +12,4 @@ export const OPERATOR = {
   email: "dprogrammar@gmail.com",
 } as const;
 
-export const LEGAL_LAST_UPDATED = "13 October 2026";
+export const LEGAL_LAST_UPDATED = "14 October 2026";

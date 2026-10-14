@@ -6,6 +6,7 @@ import { getCurrentUser, initials } from "@/lib/auth/session";
 import { getActiveCategories } from "@/lib/data/catalog";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { QuickSearch } from "@/components/search/quick-search";
 import { AccountMenu, type HeaderAccount } from "./account-menu";
 import { Logo } from "./logo";
@@ -39,7 +40,14 @@ async function getHeaderAccount(): Promise<HeaderAccount | null> {
 
 async function DesktopAccount() {
   const account = await getHeaderAccount();
-  if (account) return <AccountMenu account={account} />;
+  if (account) {
+    return (
+      <>
+        <NotificationBell />
+        <AccountMenu account={account} />
+      </>
+    );
+  }
   return (
     <Link href={ROUTES.login} className={buttonVariants({ variant: "ghost", size: "md" })}>
       Log in
@@ -48,7 +56,13 @@ async function DesktopAccount() {
 }
 
 async function MobileMenuWithAccount({ categories }: { categories: MenuCategory[] }) {
-  return <MobileMenu categories={categories} account={await getHeaderAccount()} />;
+  const account = await getHeaderAccount();
+  return (
+    <div className="flex items-center gap-1">
+      {account && <NotificationBell />}
+      <MobileMenu categories={categories} account={account} />
+    </div>
+  );
 }
 
 export async function SiteHeader() {

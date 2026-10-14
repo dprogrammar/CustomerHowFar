@@ -18,7 +18,11 @@ export function PwaSupport() {
   );
 }
 
-/** Unregisters any service worker and deletes its caches (left by earlier versions). */
+/**
+ * Unregisters the old caching service worker (/sw.js, from earlier versions) and deletes its
+ * caches. The push-notifications worker (/push-sw.js), registered only when someone turns on
+ * push, is left alone: it never caches anything.
+ */
 export function ServiceWorkerCleanup() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -27,10 +31,14 @@ export function ServiceWorkerCleanup() {
       const keys = await caches.keys();
       await Promise.all(keys.filter((k) => k.startsWith("chf-")).map((k) => caches.delete(k)));
     };
+    const isPushWorker = (r: ServiceWorkerRegistration) =>
+      [r.active, r.waiting, r.installing].some((w) => w?.scriptURL.endsWith("/push-sw.js"));
     const clean = async () => {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      if (registrations.length === 0) return deleteCaches();
-      await Promise.all(registrations.map((r) => r.unregister()));
+      const old = (await navigator.serviceWorker.getRegistrations()).filter(
+        (r) => !isPushWorker(r),
+      );
+      if (old.length === 0) return deleteCaches();
+      await Promise.all(old.map((r) => r.unregister()));
       await deleteCaches();
     };
     const ignore = () => {

@@ -93,6 +93,13 @@ export default function PrivacyPage() {
           you, your account or your device. &ldquo;Did this help?&rdquo; answers are only counted.
         </li>
         <li>
+          <strong>Notifications:</strong> the notifications we show you in the app (for example
+          &ldquo;Your listing is live&rdquo;), whether you&apos;ve read them, and your choices for
+          push and email. If you turn on push notifications, we keep a technical address for your
+          browser&apos;s push service and a device label such as &ldquo;Chrome on Android&rdquo;.
+          Push messages contain only a short title and text, never bank details or ID information.
+        </li>
+        <li>
           <strong>Waitlist sign-ups:</strong> if you ask us to email you when we launch in your
           state, we keep your email, your state, whether you&apos;re a customer or a business, your
           name if you give it, and when you agreed.
@@ -124,7 +131,9 @@ export default function PrivacyPage() {
           To email you once when we launch in your state, if you joined the waitlist, and to see
           which states people are waiting for.
         </li>
-        <li>To add answers to our help content for questions the help chat couldn&apos;t answer.</li>
+        <li>
+          To add answers to our help content for questions the help chat couldn&apos;t answer.
+        </li>
       </ul>
       <p>We don&apos;t sell your personal data and we don&apos;t show third-party adverts.</p>
 
@@ -187,6 +196,10 @@ export default function PrivacyPage() {
         <li>
           <strong>Brevo</strong>: sending emails.
         </li>
+        <li>
+          <strong>Your browser&apos;s push service</strong> (for example Google, Microsoft, Mozilla
+          or Apple): delivers push notifications to your device, only if you turn them on.
+        </li>
       </ul>
 
       <h2 id="transfers">7. International transfers</h2>
@@ -216,6 +229,11 @@ export default function PrivacyPage() {
           <strong>Waitlist sign-ups:</strong> until you delete your account. If you unsubscribe we
           keep only a record so we don&apos;t email you again; deleting your account removes your
           waitlist sign-ups completely.
+        </li>
+        <li>
+          <strong>Notifications:</strong> 90 days. <strong>Push devices:</strong> until you remove
+          them in your notification settings, turn push off, or your browser tells us they&apos;ve
+          expired.
         </li>
         <li>
           <strong>Unanswered help chat questions</strong> (anonymous): up to 180 days. Chat
@@ -270,7 +288,9 @@ export default function PrivacyPage() {
       </ul>
       <p>
         Your browser also remembers, on your device only, whether you&apos;ve opened or closed the
-        help chat button, so we don&apos;t keep showing you its hint. It holds no personal data.
+        help chat button, so we don&apos;t keep showing you its hint, and when you last tapped
+        &ldquo;Not now&rdquo; on the notifications offer, so we don&apos;t ask again too soon. It
+        holds no personal data.
       </p>
       <p>
         We don&apos;t use advertising or third-party tracking cookies, so there&apos;s nothing to

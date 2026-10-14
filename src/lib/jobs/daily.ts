@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { pruneUnansweredQuestions } from "@/lib/assistant/unanswered";
+import { pruneNotifications, sendRatingReminders } from "@/lib/notifications/jobs";
 import { runIdentityRetention } from "@/lib/identity/server";
 import { prisma } from "@/lib/prisma";
 import { pruneRateLimits } from "@/lib/rate-limit";
@@ -27,7 +28,17 @@ export async function runDailyJob() {
     const rateLimitRowsPruned = await pruneRateLimits();
     const orphans = await cleanOrphanedUploads();
     const unansweredPruned = await pruneUnansweredQuestions();
-    const result = { identity, files, rateLimitRowsPruned, orphans, unansweredPruned };
+    const notificationsPruned = await pruneNotifications();
+    const ratingReminders = await sendRatingReminders();
+    const result = {
+      identity,
+      files,
+      rateLimitRowsPruned,
+      orphans,
+      unansweredPruned,
+      notificationsPruned,
+      ratingReminders,
+    };
     await prisma.jobRun.update({
       where: { name: DAILY_JOB },
       data: {

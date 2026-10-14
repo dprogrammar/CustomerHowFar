@@ -5,6 +5,7 @@ import { CircleCheck } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { getWizardBusiness } from "@/lib/business/queries";
 import { WizardFrame, WizardSkeleton } from "@/components/business/wizard/wizard-frame";
+import { PushPrompt } from "@/components/notifications/push-prompt";
 import { buttonVariants } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -30,6 +31,8 @@ async function SubmittedContent({ params }: PageProps<"/business/[id]/submitted"
             1-2 working days.
           </p>
         </div>
+        {/* A meaningful moment to offer push notifications (never on page load elsewhere). */}
+        <PushPrompt context="listing" />
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/dashboard" className={buttonVariants({ size: "lg" })}>
             Go to my businesses

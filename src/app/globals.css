@@ -151,3 +151,21 @@ body.has-contact-bar nav[aria-label="Bottom navigation"] {
 body:has(> .chat-launcher) > footer {
   padding-bottom: 4.5rem;
 }
+
+/* Push notification offer on business pages: above the bottom nav / contact bar (phones). */
+.push-prompt {
+  bottom: calc(var(--spacing-bottom-nav) + env(safe-area-inset-bottom) + 0.75rem);
+}
+@media (max-width: 63.99rem) {
+  body.has-contact-bar .push-prompt {
+    bottom: calc(4rem + 1px + max(0px, env(safe-area-inset-bottom) - 0.5rem) + 0.75rem);
+  }
+}
+@media (min-width: 64rem) {
+  .push-prompt {
+    bottom: 1.5rem;
+  }
+}
+body.has-push-prompt .chat-launcher {
+  display: none;
+}

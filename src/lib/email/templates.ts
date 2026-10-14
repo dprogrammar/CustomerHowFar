@@ -576,3 +576,88 @@ export function proofRejectedEmail(input: {
     text: `Hi ${first},\n\nWe couldn't confirm your transfer for ${input.businessName} (reference ${input.reference}):\n\n${input.reason}\n\nUpload a new proof: ${input.payUrl}${textFooter()}`,
   };
 }
+
+// --- Notification emails (each links to the notification settings) --------------------------
+
+function settingsNote(settingsUrl: string) {
+  return `<p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#6b7280">Choose which emails you get in your <a href="${escapeHtml(settingsUrl)}" style="color:${BRAND}">notification settings</a>.</p>`;
+}
+
+export function listingReinstatedEmail(input: {
+  ownerName: string;
+  businessName: string;
+  listingUrl: string;
+  settingsUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `Your listing is live again: ${input.businessName}`,
+    html: layout({
+      preheader: `${input.businessName} is visible to customers again.`,
+      heading: "Your listing is live again",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `Good news: <strong>${escapeHtml(input.businessName)}</strong> has been reinstated and customers can find it again.`,
+        ) +
+        button("View your listing", input.listingUrl) +
+        settingsNote(input.settingsUrl),
+    }),
+    text:
+      `Hi ${first},\n\nGood news: ${input.businessName} has been reinstated and customers can find it again.\n\nView your listing: ${input.listingUrl}\n\nNotification settings: ${input.settingsUrl}` +
+      textFooter(),
+  };
+}
+
+export function ownerReplyEmail(input: {
+  name: string;
+  businessName: string;
+  reply: string;
+  reviewUrl: string;
+  settingsUrl: string;
+}): RenderedEmail {
+  const first = input.name.split(" ")[0] || "there";
+  return {
+    subject: `${input.businessName} replied to your review`,
+    html: layout({
+      preheader: `${input.businessName} replied to your review.`,
+      heading: "You have a reply",
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(`<strong>${escapeHtml(input.businessName)}</strong> replied to your review:`) +
+        quote(input.reply) +
+        button("See the reply", input.reviewUrl) +
+        settingsNote(input.settingsUrl),
+    }),
+    text:
+      `Hi ${first},\n\n${input.businessName} replied to your review:\n\n${input.reply}\n\nSee the reply: ${input.reviewUrl}\n\nNotification settings: ${input.settingsUrl}` +
+      textFooter(),
+  };
+}
+
+export function ratingReminderEmail(input: {
+  name: string;
+  businessName: string;
+  reviewUrl: string;
+  settingsUrl: string;
+}): RenderedEmail {
+  const first = input.name.split(" ")[0] || "there";
+  return {
+    subject: `Did you hire ${input.businessName}? Rate them`,
+    html: layout({
+      preheader: `Your rating helps other customers choose well.`,
+      heading: `Did you hire ${input.businessName}?`,
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(
+          `You contacted <strong>${escapeHtml(input.businessName)}</strong> on CustomerHowFar a few days ago. If you hired them, a quick rating helps other customers choose well, and helps good businesses get found.`,
+        ) +
+        button("Rate them", input.reviewUrl) +
+        paragraph("Didn't hire them? Just ignore this email. We only ask once.") +
+        settingsNote(input.settingsUrl),
+    }),
+    text:
+      `Hi ${first},\n\nYou contacted ${input.businessName} on CustomerHowFar a few days ago. If you hired them, a quick rating helps other customers choose well.\n\nRate them: ${input.reviewUrl}\n\nDidn't hire them? Just ignore this email. We only ask once.\n\nNotification settings: ${input.settingsUrl}` +
+      textFooter(),
+  };
+}

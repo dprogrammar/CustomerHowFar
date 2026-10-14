@@ -167,6 +167,21 @@ policies, so the public Supabase Data API cannot read or write anything.
   `src/lib/assistant/provider.ts` lets an AI provider be added later behind
   `ASSISTANT.AI_ENABLED` (src/config/assistant.ts).
 
+### Notifications (in-app and Web Push)
+
+- `Notification`: one in-app notification (the header bell, /notifications) with a category,
+  type, title, body and a site-path link. Always created for an event; deleted after 90 days by
+  the daily job. Opening one goes through `/notifications/open/[id]`, which marks it read.
+- `NotificationPreference` (user + category): push and email on/off (no row = both on).
+  Categories: LISTING, PAYMENT, REVIEW, RATING_REMINDER, STATE_LAUNCH, ADMIN.
+- `PushSubscription`: a browser that turned on push (standard Web Push with our VAPID keys).
+  Only allow-listed push-service endpoints are accepted; rows are deleted when the push service
+  answers 404/410. The push service worker (`/push-sw.js`) is registered only on opt-in and has
+  no fetch handler (no caching; the site stays not installable).
+- `RatingReminder` (user + business): the one-time "Did you hire ...? Rate them" follow-up.
+- Events are sent by `src/lib/email/notifications.ts` from `after()`: each creates the email,
+  the in-app notification and the push together (`src/lib/notifications/deliver.ts`).
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

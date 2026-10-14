@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import {
   notifyChangesRequested,
   notifyListingApproved,
+  notifyListingReinstated,
   notifyListingSuspended,
 } from "@/lib/email/notifications";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
@@ -216,6 +217,7 @@ export async function reinstateListingAction(
     return fail(error);
   }
   revalidatePublicBusiness(slug);
+  if (wentLive) after(() => notifyListingReinstated(parsed.data.businessId));
   refresh();
   return {
     ok: true,

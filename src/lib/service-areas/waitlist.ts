@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { getSiteUrl } from "@/config/site";
 import { sendEmail } from "@/lib/email/send";
+import { deliver } from "@/lib/notifications/deliver";
 import { waitlistLaunchEmail } from "@/lib/email/templates";
 import { prisma } from "@/lib/prisma";
 
@@ -36,7 +37,7 @@ export async function emailStateWaitlist(stateId: number) {
     where: { stateId, notifiedAt: null, unsubscribedAt: null },
     orderBy: { createdAt: "asc" },
     take: MAX_PER_RUN,
-    select: { id: true, email: true, name: true, role: true, unsubscribeToken: true },
+    select: { id: true, email: true, name: true, role: true, unsubscribeToken: true, userId: true },
   });
   const site = getSiteUrl();
   let sent = 0;
@@ -44,18 +45,42 @@ export async function emailStateWaitlist(stateId: number) {
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
     for (const entry of pending.slice(i, i + BATCH_SIZE)) {
       const unsubscribe = unsubscribeUrl(entry.unsubscribeToken);
-      const ok = await sendEmail({
-        to: { email: entry.email, ...(entry.name ? { name: entry.name } : {}) },
-        tag: "waitlist-launch",
-        headers: { "List-Unsubscribe": `<${unsubscribe}>` },
-        ...waitlistLaunchEmail({
-          name: entry.name,
-          stateName: state.name,
-          role: entry.role,
-          actionUrl: entry.role === "BUSINESS" ? `${site}/business/new` : `${site}/search`,
-          unsubscribeUrl: unsubscribe,
-        }),
-      });
+      const actionPath = entry.role === "BUSINESS" ? "/business/new" : "/search";
+      const send = () =>
+        sendEmail({
+          to: { email: entry.email, ...(entry.name ? { name: entry.name } : {}) },
+          tag: "waitlist-launch",
+          headers: { "List-Unsubscribe": `<${unsubscribe}>` },
+          ...waitlistLaunchEmail({
+            name: entry.name,
+            stateName: state.name,
+            role: entry.role,
+            actionUrl: `${site}${actionPath}`,
+            unsubscribeUrl: unsubscribe,
+          }),
+        });
+      let ok: boolean;
+      if (entry.userId) {
+        // Signed-up people also get it in the app and by push; their email choice applies.
+        let emailed: boolean | null = null;
+        await deliver({
+          userId: entry.userId,
+          category: "STATE_LAUNCH",
+          type: "state-launch",
+          title: `We're live in ${state.name}`,
+          body:
+            entry.role === "BUSINESS"
+              ? `You can now list your business in ${state.name}.`
+              : `You can now find businesses in ${state.name}.`,
+          link: actionPath,
+          email: async () => {
+            emailed = await send();
+          },
+        });
+        ok = emailed !== false;
+      } else {
+        ok = await send();
+      }
       if (ok) {
         await prisma.waitlistEntry.update({
           where: { id: entry.id },

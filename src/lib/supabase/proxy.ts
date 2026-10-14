@@ -4,7 +4,7 @@ import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
 import { getSupabasePublicEnv } from "./env";
 
 /** Paths that need a signed-in user. Pages re-check on the server; this is an early redirect. */
-const PROTECTED_PREFIXES = ["/account", "/dashboard", "/business/new"];
+const PROTECTED_PREFIXES = ["/account", "/dashboard", "/business/new", "/notifications"];
 /** Owner pages for a specific business: /business/<id>/edit, /pay, /submitted. */
 const PROTECTED_PATTERN = /^\/business\/[^/]+\/(edit|pay|submitted)\/?$/;
 

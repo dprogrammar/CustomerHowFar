@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, IdCard, KeyRound, LogOut, Mail, Phone } from "lucide-react";
+import { Bell, CalendarDays, IdCard, KeyRound, LogOut, Mail, Phone } from "lucide-react";
 import { logoutAction } from "@/lib/auth/actions";
 import { initials, requireUser } from "@/lib/auth/session";
 import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
@@ -128,6 +128,23 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
               : idState === "REJECTED"
                 ? "Submit your ID again"
                 : "View ID check status"}
+          </Link>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+          <CardDescription>
+            Choose what you get by push and email, and manage your devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/account/notifications"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+          >
+            <Bell aria-hidden="true" />
+            Notification settings
           </Link>
         </CardContent>
       </Card>

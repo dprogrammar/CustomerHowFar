@@ -73,13 +73,13 @@ model Profile {
   updatedAt        DateTime   @updatedAt @map("updated_at")
 
   businesses            Business[]
-  payments              Payment[]              @relation("PaymentUser")
+  payments              Payment[]                @relation("PaymentUser")
   /// Payments this user confirmed or rejected as an admin.
-  reviewedPayments      Payment[]              @relation("PaymentReviewer")
+  reviewedPayments      Payment[]                @relation("PaymentReviewer")
   /// Identity checks this user submitted (history kept).
-  identityVerifications IdentityVerification[] @relation("IdentitySubject")
+  identityVerifications IdentityVerification[]   @relation("IdentitySubject")
   /// Identity checks this user reviewed as an admin.
-  reviewedIdentities    IdentityVerification[] @relation("IdentityReviewer")
+  reviewedIdentities    IdentityVerification[]   @relation("IdentityReviewer")
   reviews               Review[]
   savedBusinesses       SavedBusiness[]
   contactEvents         ContactEvent[]
@@ -89,11 +89,15 @@ model Profile {
   settingChanges        SettingChange[]
   /// Admin actions this user performed (audit log).
   auditEntries          AdminAuditLog[]
-  reviewReports         ReviewReport[]         @relation("ReviewReporter")
-  resolvedReviewReports ReviewReport[]         @relation("ReviewReportResolver")
-  businessReports       BusinessReport[]       @relation("BusinessReporter")
+  reviewReports         ReviewReport[]           @relation("ReviewReporter")
+  resolvedReviewReports ReviewReport[]           @relation("ReviewReportResolver")
+  businessReports       BusinessReport[]         @relation("BusinessReporter")
   waitlistEntries       WaitlistEntry[]
-  resolvedBizReports    BusinessReport[]       @relation("BusinessReportResolver")
+  notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
+  notificationPrefs     NotificationPreference[]
+  ratingReminders       RatingReminder[]
+  resolvedBizReports    BusinessReport[]         @relation("BusinessReportResolver")
 
   @@index([status, createdAt(sort: Desc)])
   @@index([role])
@@ -264,6 +268,7 @@ model Business {
   contactEvents       ContactEvent[]
   moderationDecisions ModerationDecision[]
   reports             BusinessReport[]
+  ratingReminders     RatingReminder[]
 
   // Public listings always filter by status, so status leads most composite indexes.
   @@index([status, createdAt(sort: Desc)])
@@ -862,4 +867,100 @@ model UnansweredQuestion {
 
   @@index([askedOn])
   @@map("unanswered_questions")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications: in-app notification centre, Web Push and per-category preferences
+// ---------------------------------------------------------------------------
+
+/// Groups of notifications people can switch push and email on or off for.
+enum NotificationCategory {
+  /// Listing approved, changes requested, suspended, reinstated, ID check results.
+  LISTING
+  /// Payment proof received, confirmed or rejected.
+  PAYMENT
+  /// New reviews (owners) and owner replies to your review (customers).
+  REVIEW
+  /// "Did you hire ...? Rate them" follow-ups after contacting a business.
+  RATING_REMINDER
+  /// A state you're waiting for goes live.
+  STATE_LAUNCH
+  /// New listings, transfer proofs, ID checks and reports (admins only).
+  ADMIN
+
+  @@map("notification_category")
+}
+
+/// In-app notification (the bell). Always created; push and email follow the user's preferences.
+/// Holds only what the user may see: never bank details, ID information or other people's full
+/// names. Deleted after 90 days by the daily job.
+model Notification {
+  id        String               @id @default(uuid(7)) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  category  NotificationCategory
+  /// Event name, e.g. "listing-approved".
+  type      String               @db.VarChar(60)
+  title     String               @db.VarChar(120)
+  body      String               @db.VarChar(300)
+  /// Site path opened on click, e.g. /dashboard.
+  link      String               @db.VarChar(300)
+  readAt    DateTime?            @map("read_at")
+  createdAt DateTime             @default(now()) @map("created_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The bell: newest first per user.
+  @@index([userId, createdAt(sort: Desc)])
+  /// Unread count.
+  @@index([userId, readAt])
+  /// 90-day clean-up.
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/// A browser/device that turned on push (standard Web Push API with VAPID keys; no paid push
+/// service). Removed when the push service reports it expired (404/410) or the user removes it.
+model PushSubscription {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  /// The browser vendor's push endpoint (allow-listed hosts only).
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  /// Readable device label, e.g. "Chrome on Android".
+  label      String    @db.VarChar(80)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Per-category push/email choice. No row means both are on (the defaults).
+model NotificationPreference {
+  userId   String               @map("user_id") @db.Uuid
+  category NotificationCategory
+  push     Boolean              @default(true)
+  email    Boolean              @default(true)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, category])
+  @@map("notification_preferences")
+}
+
+/// "Did you hire ...? Rate them" was sent for this customer and business (once only).
+model RatingReminder {
+  userId     String   @map("user_id") @db.Uuid
+  businessId String   @map("business_id") @db.Uuid
+  sentAt     DateTime @default(now()) @map("sent_at")
+
+  user     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@id([userId, businessId])
+  @@index([businessId])
+  @@map("rating_reminders")
 }

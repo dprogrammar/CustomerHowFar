@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Check, Mail, MessageCircle, Phone, Share2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { track } from "./tracking";
+
+// Offered after contacting a business (loaded only then, so business pages stay light).
+const PushPrompt = lazy(() =>
+  import("@/components/notifications/push-prompt").then((m) => ({ default: m.PushPrompt })),
+);
+const CONTACTED_EVENT = "chf:contacted";
+
+function onContact(c: ContactInfo, type: "WHATSAPP" | "CALL" | "EMAIL") {
+  if (!c.trackable) return;
+  track(c.businessId, type);
+  window.dispatchEvent(new Event(CONTACTED_EVENT));
+}
 
 export type ContactInfo = {
   businessId: string;
@@ -61,48 +73,62 @@ export function ContactBar({ contact, saveSlot }: { contact: ContactInfo; saveSl
     document.body.classList.add("has-contact-bar");
     return () => document.body.classList.remove("has-contact-bar");
   }, []);
+  // After a customer contacts the business, offer push notifications (rating reminders).
+  const [contacted, setContacted] = useState(false);
+  useEffect(() => {
+    const onContacted = () => setContacted(true);
+    window.addEventListener(CONTACTED_EVENT, onContacted);
+    return () => window.removeEventListener(CONTACTED_EVENT, onContacted);
+  }, []);
   return (
-    <div
-      data-contact-bar
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-nav lg:hidden"
-    >
-      <div className="flex items-center gap-2">
-        <a
-          href={whatsappHref(contact)}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => contact.trackable && track(contact.businessId, "WHATSAPP")}
-          className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 font-semibold text-white hover:bg-brand-700"
-        >
-          <MessageCircle aria-hidden="true" className="size-5" />
-          WhatsApp
-        </a>
-        <a
-          href={`tel:${contact.phone}`}
-          onClick={() => contact.trackable && track(contact.businessId, "CALL")}
-          className="inline-flex size-12 items-center justify-center rounded-lg text-gray-900 ring-1 ring-border hover:bg-muted"
-        >
-          <Phone aria-hidden="true" className="size-5" />
-          <span className="sr-only">Call {contact.name}</span>
-        </a>
-        <button
-          type="button"
-          onClick={share}
-          className="inline-flex size-12 items-center justify-center rounded-lg text-gray-900 ring-1 ring-border hover:bg-muted"
-        >
-          {copied ? (
-            <Check aria-hidden="true" className="size-5 text-brand-700" />
-          ) : (
-            <Share2 aria-hidden="true" className="size-5" />
-          )}
-          <span className="sr-only">{copied ? "Link copied" : `Share ${contact.name}`}</span>
-        </button>
-        {saveSlot}
+    <>
+      {contacted && (
+        <Suspense fallback={null}>
+          <PushPrompt context="contact" floating />
+        </Suspense>
+      )}
+      <div
+        data-contact-bar
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-white px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-nav lg:hidden"
+      >
+        <div className="flex items-center gap-2">
+          <a
+            href={whatsappHref(contact)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onContact(contact, "WHATSAPP")}
+            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 font-semibold text-white hover:bg-brand-700"
+          >
+            <MessageCircle aria-hidden="true" className="size-5" />
+            WhatsApp
+          </a>
+          <a
+            href={`tel:${contact.phone}`}
+            onClick={() => onContact(contact, "CALL")}
+            className="inline-flex size-12 items-center justify-center rounded-lg text-gray-900 ring-1 ring-border hover:bg-muted"
+          >
+            <Phone aria-hidden="true" className="size-5" />
+            <span className="sr-only">Call {contact.name}</span>
+          </a>
+          <button
+            type="button"
+            onClick={share}
+            className="inline-flex size-12 items-center justify-center rounded-lg text-gray-900 ring-1 ring-border hover:bg-muted"
+          >
+            {copied ? (
+              <Check aria-hidden="true" className="size-5 text-brand-700" />
+            ) : (
+              <Share2 aria-hidden="true" className="size-5" />
+            )}
+            <span className="sr-only">{copied ? "Link copied" : `Share ${contact.name}`}</span>
+          </button>
+          {saveSlot}
+        </div>
+        <span role="status" className="sr-only">
+          {copied ? "Link copied" : ""}
+        </span>
       </div>
-      <span role="status" className="sr-only">
-        {copied ? "Link copied" : ""}
-      </span>
-    </div>
+    </>
   );
 }
 
@@ -124,7 +150,7 @@ export function ContactCard({ contact, saveSlot }: { contact: ContactInfo; saveS
           href={whatsappHref(contact)}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => contact.trackable && track(contact.businessId, "WHATSAPP")}
+          onClick={() => onContact(contact, "WHATSAPP")}
           className={cn(button, "bg-brand-600 text-white hover:bg-brand-700")}
         >
           <MessageCircle aria-hidden="true" className="size-5" />
@@ -132,7 +158,7 @@ export function ContactCard({ contact, saveSlot }: { contact: ContactInfo; saveS
         </a>
         <a
           href={`tel:${contact.phone}`}
-          onClick={() => contact.trackable && track(contact.businessId, "CALL")}
+          onClick={() => onContact(contact, "CALL")}
           className={cn(button, "text-gray-900 ring-1 ring-border hover:bg-muted")}
         >
           <Phone aria-hidden="true" className="size-5" />
@@ -141,7 +167,7 @@ export function ContactCard({ contact, saveSlot }: { contact: ContactInfo; saveS
         {contact.email && (
           <a
             href={`mailto:${contact.email}`}
-            onClick={() => contact.trackable && track(contact.businessId, "EMAIL")}
+            onClick={() => onContact(contact, "EMAIL")}
             className={cn(button, "text-gray-900 ring-1 ring-border hover:bg-muted")}
           >
             <Mail aria-hidden="true" className="size-5" />

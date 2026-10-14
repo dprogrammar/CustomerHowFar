@@ -46,6 +46,8 @@ export const RATE_LIMITS = {
     { windowSeconds: HOUR, max: 150 },
   ],
   "chat-feedback": [{ windowSeconds: HOUR, max: 60 }],
+  /** Turning push on for a device (per user). */
+  "push-subscribe": [{ windowSeconds: HOUR, max: 20 }],
 } satisfies Record<string, Window[]>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
