@@ -14,7 +14,8 @@ const BENEFITS = [
 /** While listing is free (fee switch off), says so first. */
 const FREE_BENEFIT = "Free to list your business";
 
-export async function BusinessCta() {
+/** `freePromo`: the launch "FREE" promotion adds a large FREE label to the heading. */
+export async function BusinessCta({ freePromo = false }: { freePromo?: boolean }) {
   const benefits = (await isListingFeeOn()) ? BENEFITS : [FREE_BENEFIT, ...BENEFITS];
   return (
     <section aria-labelledby="cta-title" className="py-4 sm:py-8">
@@ -32,6 +33,14 @@ export async function BusinessCta() {
               id="cta-title"
               className="text-2xl font-bold tracking-tight text-balance sm:text-3xl"
             >
+              {freePromo && (
+                <>
+                  <span className="mr-2 inline-block rounded-lg bg-accent-400 px-3 py-0.5 align-middle text-3xl leading-tight font-black tracking-wide text-gray-950 shadow-md sm:text-4xl">
+                    FREE
+                  </span>
+                  <span className="sr-only">: </span>
+                </>
+              )}
               Showcase your work to thousands of customers
             </h2>
             <ul className="mt-5 space-y-2.5 text-brand-50">

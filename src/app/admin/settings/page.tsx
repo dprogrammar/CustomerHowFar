@@ -23,6 +23,10 @@ const FIELD_LABELS: Record<string, { label: string; format: (v: string) => strin
   bankName: { label: "Bank name", format: (v) => v || "(empty)" },
   bankAccountNumber: { label: "Account number", format: (v) => v || "(empty)" },
   bankAccountName: { label: "Account name", format: (v) => v || "(empty)" },
+  homepageFreePromo: {
+    label: "'Free' promotion on homepage",
+    format: (v) => (v === "true" ? "On" : "Off"),
+  },
 };
 
 async function Settings() {
@@ -46,6 +50,7 @@ async function Settings() {
             bankName: settings.bankName,
             bankAccountNumber: settings.bankAccountNumber,
             bankAccountName: settings.bankAccountName,
+            homepageFreePromo: settings.homepageFreePromo,
           }}
         />
       </section>

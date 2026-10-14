@@ -3,7 +3,7 @@ import { getSiteUrl } from "@/config/site";
 import { ratingReminderEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
 import { prisma } from "@/lib/prisma";
-import { deliver } from "./deliver";
+import { deliver, isTestMode } from "./deliver";
 
 // Daily job steps for notifications.
 
@@ -22,6 +22,8 @@ export async function pruneNotifications() {
  * customer/business pair is asked once; at most one reminder per person per day.
  */
 export async function sendRatingReminders(limit = 300) {
+  // Test runs only ever remind test accounts (see isTestMode).
+  const testMode = isTestMode();
   const due = await prisma.$queryRaw<{ user_id: string; business_id: string }[]>`
     SELECT DISTINCT ON (ce.user_id) ce.user_id::text, ce.business_id::text
     FROM contact_events ce
@@ -29,6 +31,7 @@ export async function sendRatingReminders(limit = 300) {
     JOIN profiles p ON p.id = ce.user_id AND p.status = 'ACTIVE'
     JOIN auth.users au ON au.id = ce.user_id AND au.email_confirmed_at IS NOT NULL
     WHERE ce.user_id IS NOT NULL
+      AND (${!testMode} OR p.email LIKE '%@example.com')
       AND ce.created_at <= now() - interval '2 days'
       AND ce.created_at >= now() - interval '14 days'
       AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.user_id = ce.user_id AND r.business_id = ce.business_id)

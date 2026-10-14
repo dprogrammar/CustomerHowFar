@@ -4,10 +4,12 @@ import { ROUTES } from "@/config/navigation";
 import { Container } from "@/components/ui/container";
 import { ServiceSearchForm } from "@/components/search/service-search-form";
 import { LiveStatesNote } from "@/components/service-areas/live-states";
+import { FreePromoBadge, FreePromoCta, FreePromoPoints } from "./free-promo";
 
 const POPULAR_SEARCHES = ["Tailor", "Electrician", "Plumber", "Hair stylist", "Mechanic"];
 
-export function Hero() {
+/** `freePromo`: the launch "FREE" promotion (admin switch); off = the regular hero. */
+export function Hero({ freePromo = false }: { freePromo?: boolean }) {
   return (
     <section
       aria-labelledby="hero-title"
@@ -25,6 +27,11 @@ export function Hero() {
 
       <Container className="py-10 sm:py-16 lg:py-20">
         <div className="mx-auto max-w-3xl text-center">
+          {freePromo && (
+            <div className="mb-3">
+              <FreePromoBadge />
+            </div>
+          )}
           <p className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-brand-50 ring-1 ring-white/15 sm:text-sm">
             <BadgeCheck aria-hidden="true" className="size-4 text-accent-300" />
             <LiveStatesNote />
@@ -42,6 +49,13 @@ export function Hero() {
         </div>
 
         <ServiceSearchForm id="hero-search" className="mx-auto mt-7 max-w-3xl sm:mt-9" />
+
+        {freePromo && (
+          <>
+            <FreePromoPoints />
+            <FreePromoCta />
+          </>
+        )}
 
         <div className="mx-auto mt-5 flex max-w-3xl flex-wrap items-center justify-center gap-2 text-sm">
           <span className="text-brand-100">Popular:</span>

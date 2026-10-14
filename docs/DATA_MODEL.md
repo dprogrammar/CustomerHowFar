@@ -160,6 +160,9 @@ policies, so the public Supabase Data API cannot read or write anything.
   it's off, fee and payment answers are hidden everywhere and "Is it free to list?" is shown. The
   footer, homepage, onboarding and chat read the switch through `isListingFeeOn()` (cached and
   tagged); /admin/settings expires the tag so wording changes immediately.
+- `AppSetting.homepageFreePromo`: the launch "FREE" homepage promotion (admin switch, default on).
+  It can never be on with the listing fee on: the settings action refuses it, and a database
+  trigger switches it off whenever `paymentRequired` is switched on.
 - `UnansweredQuestion`: a question the chat couldn't answer, stored anonymously (emails, phone
   numbers, long numbers and names removed; no user, no IP, random v4 id, day only). Grouped by
   similarity in /admin/help-assistant; deleted after 180 days by the daily job.
@@ -181,6 +184,7 @@ policies, so the public Supabase Data API cannot read or write anything.
 - `RatingReminder` (user + business): the one-time "Did you hire ...? Rate them" follow-up.
 - Events are sent by `src/lib/email/notifications.ts` from `after()`: each creates the email,
   the in-app notification and the push together (`src/lib/notifications/deliver.ts`).
+  In test mode (`EMAIL_TEST_OUTBOX` set) only `@example.com` test accounts are notified.
 
 ### Search
 

@@ -305,6 +305,7 @@ const settingsSchema = z.object({
     .refine((v) => v === "" || /^\d{10}$/.test(v), "The account number must be exactly 10 digits.")
     .transform((v) => (v === "" ? null : v)),
   bankAccountName: optionalText(80),
+  homepageFreePromo: z.boolean(),
 });
 
 type SettingsInput = z.output<typeof settingsSchema>;
@@ -337,9 +338,22 @@ export async function updateSettingsAction(
     };
   }
 
-  const changes = await prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM app_settings WHERE id = 1 FOR UPDATE`;
     const current = await tx.appSetting.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+    // The homepage "FREE" promotion says listing is free, so it can't be on with the fee on.
+    if (next.paymentRequired && next.homepageFreePromo) {
+      if (current.paymentRequired || !current.homepageFreePromo) {
+        return { blocked: true as const };
+      }
+      // Turning the fee on switches the promotion off.
+      next.homepageFreePromo = false;
+    }
+    const promoSwitchedOff =
+      current.homepageFreePromo &&
+      !next.homepageFreePromo &&
+      next.paymentRequired &&
+      !current.paymentRequired;
     const fields = [
       "paymentRequired",
       "listingFeeNaira",
@@ -347,6 +361,7 @@ export async function updateSettingsAction(
       "bankName",
       "bankAccountNumber",
       "bankAccountName",
+      "homepageFreePromo",
     ] as const;
     const diff = fields
       .filter((field) => current[field] !== next[field])
@@ -355,11 +370,19 @@ export async function updateSettingsAction(
         oldValue: String(current[field] ?? ""),
         newValue: String(next[field] ?? ""),
       }));
-    if (diff.length === 0) return diff;
+    if (diff.length === 0) return { blocked: false as const, changes: diff, promoSwitchedOff };
     await tx.appSetting.update({ where: { id: 1 }, data: next });
     await tx.settingChange.createMany({ data: diff.map((d) => ({ ...d, adminId: admin.id })) });
-    return diff;
+    return { blocked: false as const, changes: diff, promoSwitchedOff };
   });
+  if (outcome.blocked) {
+    return {
+      ok: false,
+      error:
+        "The 'Free' promotion can't be shown while the listing fee is on. Turn the listing fee off first.",
+    };
+  }
+  const { changes, promoSwitchedOff } = outcome;
 
   // The listing fee and payment methods appear in help answers (/help and the chat).
   // Turning the listing fee on or off also changes wording on /help, the homepage, onboarding,
@@ -370,5 +393,10 @@ export async function updateSettingsAction(
   }
   refresh();
   if (changes.length === 0) return { ok: true, message: "No changes to save." };
-  return { ok: true, message: "Settings saved. They apply immediately." };
+  return {
+    ok: true,
+    message: promoSwitchedOff
+      ? "Settings saved. They apply immediately. The homepage 'Free' promotion was switched off because the listing fee is on."
+      : "Settings saved. They apply immediately.",
+  };
 }

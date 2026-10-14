@@ -20,3 +20,18 @@ export async function isListingFeeOn(): Promise<boolean> {
   });
   return s?.paymentRequired ?? false;
 }
+
+/**
+ * The launch-period "FREE" homepage promotion: on only while the admin switch is on AND the
+ * listing fee is off (it says listing is free). Same cache tag as the fee switch.
+ */
+export async function isHomepageFreePromoOn(): Promise<boolean> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(FEE_SWITCH_TAG);
+  const s = await prisma.appSetting.findUnique({
+    where: { id: 1 },
+    select: { paymentRequired: true, homepageFreePromo: true },
+  });
+  return Boolean(s?.homepageFreePromo) && !s?.paymentRequired;
+}

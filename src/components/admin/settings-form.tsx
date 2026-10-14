@@ -16,26 +16,33 @@ export type SettingsValues = {
   bankName: string;
   bankAccountNumber: string;
   bankAccountName: string;
+  homepageFreePromo: boolean;
 };
 
 function Switch({
   checked,
   onChange,
   labelId,
+  describedBy,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
   labelId: string;
+  describedBy?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
+      aria-describedby={describedBy}
       role="switch"
       aria-checked={checked}
       aria-labelledby={labelId}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors",
+        "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-brand-600" : "bg-gray-400",
       )}
     >
@@ -64,6 +71,8 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
     bank: useId(),
     number: useId(),
     name: useId(),
+    promo: useId(),
+    promoHint: useId(),
   };
   const set = <K extends keyof SettingsValues>(key: K, value: SettingsValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -82,7 +91,14 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
       : values.paymentRequired && !transferUsable
         ? "The listing fee is on, so at least one payment method must be enabled. Turn on bank transfer with complete details, or turn the fee off."
         : null;
-  const next = { ...values, listingFeeNaira: feeNumber, bankAccountNumber: accountDigits };
+  // The "Free" promotion can't be on while the listing fee is on (turning the fee on turns it off).
+  const promoBlocked = values.paymentRequired;
+  const next = {
+    ...values,
+    listingFeeNaira: feeNumber,
+    bankAccountNumber: accountDigits,
+    homepageFreePromo: values.homepageFreePromo && !promoBlocked,
+  };
   const changed = (Object.keys(initial) as (keyof SettingsValues)[]).some(
     (k) => initial[k] !== next[k],
   );
@@ -98,6 +114,15 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
   if (feeValid && feeNumber !== initial.listingFeeNaira) {
     effects.push(
       `The fee changes from ${formatNaira(initial.listingFeeNaira)} to ${formatNaira(feeNumber)} for payments started from now on.`,
+    );
+  }
+  if (next.homepageFreePromo !== initial.homepageFreePromo) {
+    effects.push(
+      next.homepageFreePromo
+        ? "The homepage shows the 'Free' promotion."
+        : next.paymentRequired && !initial.paymentRequired
+          ? "The homepage 'Free' promotion will be switched off, because it can't show while the listing fee is on."
+          : "The 'Free' promotion is removed from the homepage.",
     );
   }
   if (next.manualTransferEnabled !== initial.manualTransferEnabled) {
@@ -228,6 +253,31 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             />
           </div>
         </div>
+      </section>
+
+      <section aria-labelledby={ids.promo} className="space-y-2 border-t border-border pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p id={ids.promo} className="text-base font-semibold text-gray-900">
+              Show &lsquo;Free&rsquo; promotion on homepage
+            </p>
+            <p id={ids.promoHint} className="mt-1 text-sm text-gray-700">
+              {promoBlocked
+                ? "Not available while the listing fee is on: the promotion says listing is free."
+                : "A bold launch promotion on the homepage telling customers and businesses that CustomerHowFar is free."}
+            </p>
+          </div>
+          <Switch
+            checked={next.homepageFreePromo}
+            onChange={(v) => set("homepageFreePromo", v)}
+            labelId={ids.promo}
+            describedBy={ids.promoHint}
+            disabled={promoBlocked}
+          />
+        </div>
+        <p className="text-sm font-medium text-gray-900">
+          Currently: {next.homepageFreePromo ? "On" : "Off"}
+        </p>
       </section>
 
       {ruleError && <FormAlert status="error">{ruleError}</FormAlert>}

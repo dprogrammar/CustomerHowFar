@@ -40,7 +40,19 @@ const logFailure = (type: string, part: string) => (error: unknown) => {
   return null;
 };
 
+/**
+ * Test mode (EMAIL_TEST_OUTBOX set, never in production): only test accounts (@example.com) are
+ * notified, so test runs against a shared database never reach real people or their devices.
+ */
+export const isTestMode = () => Boolean(process.env.EMAIL_TEST_OUTBOX);
+
+async function deliverableInTestMode(userId: string) {
+  const p = await prisma.profile.findUnique({ where: { id: userId }, select: { email: true } });
+  return Boolean(p?.email.toLowerCase().endsWith("@example.com"));
+}
+
 export async function deliver(d: Delivery) {
+  if (isTestMode() && !(await deliverableInTestMode(d.userId).catch(() => false))) return;
   // The preference read and the in-app insert start together; the email goes out as soon as the
   // preference is known and never waits for (or depends on) the in-app notification or push.
   const prefsRead = preferencesFor([d.userId], d.category)

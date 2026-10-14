@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { ROUTES } from "@/config/navigation";
 import { getSiteUrl, siteConfig } from "@/config/site";
+import { isHomepageFreePromoOn } from "@/lib/payments/fee-switch";
 import { BusinessCta } from "@/components/home/business-cta";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { FeaturedBusinesses } from "@/components/home/featured-businesses";
+import { FreePromoBar } from "@/components/home/free-promo";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TrustSection } from "@/components/home/trust-section";
@@ -49,15 +51,18 @@ function StructuredData() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  // Launch "FREE" promotion (admin switch; cached and refreshed when settings change).
+  const freePromo = await isHomepageFreePromoOn();
   return (
     <>
       <StructuredData />
-      <Hero />
+      {freePromo && <FreePromoBar />}
+      <Hero freePromo={freePromo} />
       <CategoryGrid />
       <HowItWorks />
       <FeaturedBusinesses />
-      <BusinessCta />
+      <BusinessCta freePromo={freePromo} />
       <TrustSection />
       <WaitlistTeaser />
     </>
