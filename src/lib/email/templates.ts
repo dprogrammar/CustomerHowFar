@@ -478,11 +478,21 @@ export function waitlistLaunchEmail(input: {
 
 // --- Identity checks -----------------------------------------------------------------------
 
+/** What an accepted ID check means for the owner right now (never implies a listing is live). */
+export function identityAcceptedMessage(listingInReview: boolean) {
+  return listingInReview
+    ? "Your ID check was accepted. Your listing is still being reviewed, and we'll notify you as soon as it's live."
+    : "Your ID check was accepted. Your listings will show the 'ID submitted' badge.";
+}
+
 export function identityAcceptedEmail(input: {
   ownerName: string;
   dashboardUrl: string;
+  /** The owner has a listing still waiting for review. */
+  listingInReview: boolean;
 }): RenderedEmail {
   const first = input.ownerName.split(" ")[0] || "there";
+  const message = identityAcceptedMessage(input.listingInReview);
   return {
     subject: "Your ID check is complete",
     html: layout({
@@ -490,15 +500,13 @@ export function identityAcceptedEmail(input: {
       heading: "Your ID check is complete",
       body:
         paragraph(`Hi ${escapeHtml(first)},`) +
-        paragraph(
-          "Thank you. Our team has checked your ID and selfie and accepted them. Your approved listings now show an <strong>ID submitted</strong> badge, so customers know you've shared your ID with us.",
-        ) +
+        paragraph(escapeHtml(message)) +
         button("View my businesses", input.dashboardUrl) +
         paragraph(
           "We delete your ID photo and selfie 90 days after our review. We keep only a record that the check was done.",
         ),
     }),
-    text: `Hi ${first},\n\nOur team has checked your ID and selfie and accepted them. Your approved listings now show an "ID submitted" badge.\n\n${input.dashboardUrl}\n\nWe delete your ID photo and selfie 90 days after our review.${textFooter()}`,
+    text: `Hi ${first},\n\n${message}\n\n${input.dashboardUrl}\n\nWe delete your ID photo and selfie 90 days after our review.${textFooter()}`,
   };
 }
 

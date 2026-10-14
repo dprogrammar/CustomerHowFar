@@ -15,6 +15,7 @@ import {
   listingReinstatedEmail,
   listingSuspendedEmail,
   identityAcceptedEmail,
+  identityAcceptedMessage,
   identityRejectedEmail,
   adminIdentitySubmittedEmail,
   accountSuspendedEmail,
@@ -364,12 +365,18 @@ export function notifyIdentityReviewed(verificationId: string) {
     const site = getSiteUrl();
     const to = { email: user.email, name: user.fullName };
     if (v.status === "APPROVED") {
+      // Don't suggest a listing is live while one is still waiting for review.
+      const inReview = await prisma.business.count({
+        where: { ownerId: v.userId, status: "PENDING_REVIEW" },
+      });
+      const listingInReview = inReview > 0;
+      const message = identityAcceptedMessage(listingInReview);
       await deliver({
         userId: v.userId,
         category: "LISTING",
         type: "identity-accepted",
         title: "ID check accepted",
-        body: "Our team accepted your ID check. Your listings can now be approved.",
+        body: message,
         link: "/dashboard",
         email: () =>
           sendEmail({
@@ -378,6 +385,7 @@ export function notifyIdentityReviewed(verificationId: string) {
             ...identityAcceptedEmail({
               ownerName: user.fullName,
               dashboardUrl: `${site}/dashboard`,
+              listingInReview,
             }),
           }),
       });
