@@ -6,6 +6,10 @@ import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { Container } from "@/components/ui/container";
 import { Logo } from "./logo";
 
+const DEVELOPER_MAILTO = `mailto:dprogrammar@gmail.com?subject=${encodeURIComponent(
+  "Website/App project enquiry (via CustomerHowFar)",
+)}`;
+
 async function CopyrightYear() {
   "use cache";
   cacheLife("days");
@@ -48,16 +52,34 @@ export async function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+        {/* Phones and tablets: stacked and centred. Desktop: one line, copyright on the left. */}
+        <div className="mt-10 flex flex-col items-center gap-2 border-t border-white/10 pt-6 text-center text-sm text-gray-400 lg:flex-row lg:justify-between lg:text-left">
           <p>
             &copy; <CopyrightYear /> {siteConfig.name}. All rights reserved.
           </p>
-          <p>
-            Made in Nigeria{" "}
-            <span role="img" aria-label="Nigerian flag">
-              🇳🇬
+          <div className="flex flex-col items-center gap-x-2 gap-y-2 lg:flex-row">
+            <p>
+              Designed &amp; built by{" "}
+              <strong className="font-semibold text-accent-300">Dprogrammar</strong>
+              <span aria-hidden="true"> · </span>
+              <a
+                href={DEVELOPER_MAILTO}
+                aria-label="Email Dprogrammar at dprogrammar@gmail.com"
+                className="rounded text-gray-300 underline underline-offset-2 hover:text-white"
+              >
+                dprogrammar@gmail.com
+              </a>
+            </p>
+            <span aria-hidden="true" className="hidden lg:inline">
+              ·
             </span>
-          </p>
+            <p>
+              Made in Nigeria{" "}
+              <span role="img" aria-label="Nigerian flag">
+                🇳🇬
+              </span>
+            </p>
+          </div>
         </div>
       </Container>
     </footer>
