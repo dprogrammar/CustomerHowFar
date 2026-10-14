@@ -85,6 +85,14 @@ export default function PrivacyPage() {
           through the contact form.
         </li>
         <li>
+          <strong>Help chat:</strong> the HowFar Assistant answers automatically from our own help
+          content and listings. We don&apos;t keep your conversations, and we never send them to
+          anyone else (no AI or other outside service reads them). When the assistant can&apos;t
+          answer, we keep that question <strong>anonymously</strong> to improve our help content:
+          names, email addresses and phone numbers are removed first, and it isn&apos;t linked to
+          you, your account or your device. &ldquo;Did this help?&rdquo; answers are only counted.
+        </li>
+        <li>
           <strong>Waitlist sign-ups:</strong> if you ask us to email you when we launch in your
           state, we keep your email, your state, whether you&apos;re a customer or a business, your
           name if you give it, and when you agreed.
@@ -116,6 +124,7 @@ export default function PrivacyPage() {
           To email you once when we launch in your state, if you joined the waitlist, and to see
           which states people are waiting for.
         </li>
+        <li>To add answers to our help content for questions the help chat couldn&apos;t answer.</li>
       </ul>
       <p>We don&apos;t sell your personal data and we don&apos;t show third-party adverts.</p>
 
@@ -136,7 +145,8 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Legitimate interests:</strong> to keep the site safe and trusted (moderation,
-          reports, fraud prevention, rate limits) and to provide simple usage statistics.
+          reports, fraud prevention, rate limits), to provide simple usage statistics and to improve
+          our help content.
         </li>
         <li>
           <strong>Legal obligation:</strong> to keep financial records of payments.
@@ -208,6 +218,10 @@ export default function PrivacyPage() {
           waitlist sign-ups completely.
         </li>
         <li>
+          <strong>Unanswered help chat questions</strong> (anonymous): up to 180 days. Chat
+          conversations themselves are not kept.
+        </li>
+        <li>
           <strong>Scrambled IP addresses for rate limiting:</strong> up to two days.
         </li>
       </ul>
@@ -254,6 +268,10 @@ export default function PrivacyPage() {
           page view or contact tap is counted once. They hold no personal data.
         </li>
       </ul>
+      <p>
+        Your browser also remembers, on your device only, whether you&apos;ve opened or closed the
+        help chat button, so we don&apos;t keep showing you its hint. It holds no personal data.
+      </p>
       <p>
         We don&apos;t use advertising or third-party tracking cookies, so there&apos;s nothing to
         opt out of.

@@ -40,6 +40,12 @@ export const RATE_LIMITS = {
   ],
   track: [{ windowSeconds: 10 * MIN, max: 300 }],
   search: [{ windowSeconds: MIN, max: 60 }],
+  /** Help chat messages: plenty for a real conversation, too few for scripts. */
+  chat: [
+    { windowSeconds: MIN, max: 15 },
+    { windowSeconds: HOUR, max: 150 },
+  ],
+  "chat-feedback": [{ windowSeconds: HOUR, max: 60 }],
 } satisfies Record<string, Window[]>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

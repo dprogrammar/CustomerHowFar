@@ -146,6 +146,22 @@ policies, so the public Supabase Data API cannot read or write anything.
   time, unsubscribe token, `notifiedAt`, `unsubscribedAt`. Launch emails go out in small
   batches and are recorded, so nobody is emailed twice. Deleted with the user's account.
 
+### Help centre and the HowFar Assistant (help chat)
+
+- `FaqEntry`: one help question and answer (simple markdown), with `keywords` (synonyms,
+  Pidgin), a `category` (the /help section), `isActive`, `sortOrder` and chat statistics
+  (`timesShown`, `helpfulCount`, `notHelpfulCount`). `slug` is the /help anchor and never
+  changes. `searchVector` (full-text) and `matchTerms` (words for trigram typo matching) are
+  maintained by a trigger. /help and the chat both read these rows, so they always agree.
+  Answers can contain live-fact placeholders (`{{listing_fee}}`, `{{live_states}}`...) filled
+  from `AppSetting` and `State` when shown (never bank details).
+- `UnansweredQuestion`: a question the chat couldn't answer, stored anonymously (emails, phone
+  numbers, long numbers and names removed; no user, no IP, random v4 id, day only). Grouped by
+  similarity in /admin/help-assistant; deleted after 180 days by the daily job.
+- The chat is rule-based and free: no AI or paid API, and conversations are never stored.
+  `src/lib/assistant/provider.ts` lets an AI provider be added later behind
+  `ASSISTANT.AI_ENABLED` (src/config/assistant.ts).
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

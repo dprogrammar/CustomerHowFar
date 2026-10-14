@@ -93,3 +93,61 @@
 body.has-contact-bar nav[aria-label="Bottom navigation"] {
   display: none;
 }
+
+/* Help chat button (src/components/assistant). Sits above the phone bottom nav, and above the
+   sticky contact bar on business pages, so it never covers their buttons. */
+.chat-launcher {
+  bottom: calc(var(--spacing-bottom-nav) + env(safe-area-inset-bottom) + 0.75rem);
+}
+@media (min-width: 48rem) {
+  .chat-launcher {
+    bottom: 1.25rem;
+  }
+}
+@media (max-width: 63.99rem) {
+  /* The contact bar: 3rem buttons + 1rem padding + 1px border (+ safe area). */
+  body.has-contact-bar .chat-launcher {
+    bottom: calc(4rem + 1px + max(0px, env(safe-area-inset-bottom) - 0.5rem) + 0.75rem);
+  }
+}
+
+/* The "Need help?" bubble points at the button. */
+.chat-hint::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-top: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* A gentle pulse ring on the first visit only (none when the visitor prefers reduced motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .chat-pulse::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 rgb(0 135 81 / 0.5);
+    animation: chat-pulse 1.6s ease-out 0.8s 3;
+    pointer-events: none;
+  }
+}
+@keyframes chat-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(0 135 81 / 0.5);
+  }
+  80%,
+  100% {
+    box-shadow: 0 0 0 18px rgb(0 135 81 / 0);
+  }
+}
+
+/* Room under the footer so the chat button never covers the end of a page. */
+body:has(> .chat-launcher) > footer {
+  padding-bottom: 4.5rem;
+}

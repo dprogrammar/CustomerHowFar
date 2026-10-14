@@ -794,3 +794,60 @@ model WaitlistEntry {
   @@index([userId])
   @@map("waitlist_entries")
 }
+
+// ---------------------------------------------------------------------------
+// Help centre and the HowFar Assistant (free, rule-based help chat)
+// ---------------------------------------------------------------------------
+
+enum FaqCategory {
+  CUSTOMERS
+  SAFETY
+  BUSINESSES
+  ACCOUNT
+
+  @@map("faq_category")
+}
+
+/// A help-centre question and answer. Shown on /help and used by the HowFar Assistant chat, so
+/// both always say the same thing. Answers are simple markdown and may contain live-fact
+/// placeholders (e.g. {{listing_fee}}) filled from the database when shown.
+model FaqEntry {
+  id              String                   @id @default(uuid(7)) @db.Uuid
+  /// Anchor on /help (e.g. /help#listing-fee). Never change once live: links point to it.
+  slug            String                   @unique
+  question        String
+  /// Paragraphs, "- " lists, **bold** and [links](/path). See src/lib/help/markdown.tsx.
+  answer          String
+  /// Other words and phrases people use for this question (synonyms, Pidgin), for matching.
+  keywords        String[]                 @default([])
+  category        FaqCategory
+  isActive        Boolean                  @default(true) @map("is_active")
+  sortOrder       Int                      @default(0) @map("sort_order")
+  /// Chat statistics: times given as the answer, and "Did this help?" votes.
+  timesShown      Int                      @default(0) @map("times_shown")
+  helpfulCount    Int                      @default(0) @map("helpful_count")
+  notHelpfulCount Int                      @default(0) @map("not_helpful_count")
+  /// Search columns, maintained by a database trigger (see the help_assistant migration).
+  /// Never written by app code.
+  searchVector    Unsupported("tsvector")? @map("search_vector")
+  /// Distinct words of the question and keywords, for typo-tolerant (trigram) matching.
+  matchTerms      String[]                 @default([]) @map("match_terms")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  @@index([isActive, category, sortOrder])
+  @@index([searchVector], type: Gin, map: "faq_entries_search_vector_idx")
+  @@map("faq_entries")
+}
+
+/// A question the assistant couldn't answer, kept ANONYMOUSLY to improve help content: emails,
+/// phone numbers, long numbers and names are removed first, and nothing links it to a person
+/// (no user id, no IP, a random v4 id, and the day only, never the time). Deleted after 180 days.
+model UnansweredQuestion {
+  id      String   @id @default(uuid()) @db.Uuid
+  text    String   @db.VarChar(200)
+  askedOn DateTime @map("asked_on") @db.Date
+
+  @@index([askedOn])
+  @@map("unanswered_questions")
+}

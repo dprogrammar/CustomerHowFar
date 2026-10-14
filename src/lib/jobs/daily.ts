@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { pruneUnansweredQuestions } from "@/lib/assistant/unanswered";
 import { runIdentityRetention } from "@/lib/identity/server";
 import { prisma } from "@/lib/prisma";
 import { pruneRateLimits } from "@/lib/rate-limit";
@@ -25,7 +26,8 @@ export async function runDailyJob() {
     const files = await processPendingFileDeletions();
     const rateLimitRowsPruned = await pruneRateLimits();
     const orphans = await cleanOrphanedUploads();
-    const result = { identity, files, rateLimitRowsPruned, orphans };
+    const unansweredPruned = await pruneUnansweredQuestions();
+    const result = { identity, files, rateLimitRowsPruned, orphans, unansweredPruned };
     await prisma.jobRun.update({
       where: { name: DAILY_JOB },
       data: {

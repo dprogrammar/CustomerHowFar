@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import type { BusinessStatus, ModerationAction, Prisma } from "@/generated/prisma/client";
@@ -11,6 +11,7 @@ import {
   notifyListingSuspended,
 } from "@/lib/email/notifications";
 import { revalidatePublicBusiness } from "@/lib/business/revalidate";
+import { HELP_TAGS } from "@/lib/help/server";
 import { prisma } from "@/lib/prisma";
 import { approveBusinessInTx, RuleError, StaleError } from "./moderation";
 
@@ -357,6 +358,8 @@ export async function updateSettingsAction(
     return diff;
   });
 
+  // The listing fee and payment methods appear in help answers (/help and the chat).
+  if (changes.length > 0) updateTag(HELP_TAGS.facts);
   refresh();
   if (changes.length === 0) return { ok: true, message: "No changes to save." };
   return { ok: true, message: "Settings saved. They apply immediately." };

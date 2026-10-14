@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { getSiteUrl, siteConfig } from "@/config/site";
 import { Suspense } from "react";
 import { preconnect } from "react-dom";
+import { ChatLauncher } from "@/components/assistant/chat-launcher";
 import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
 import { PwaSupport } from "@/components/layout/pwa";
 import { APP_INSTALL_ENABLED } from "@/config/pwa";
@@ -70,6 +71,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteFooter />
         <Suspense fallback={<BottomNavView pathname={null} />}>
           <BottomNav />
+        </Suspense>
+        {/* Help chat button; the chat itself loads only when tapped. Hidden on admin pages. */}
+        <Suspense fallback={null}>
+          <ChatLauncher />
         </Suspense>
         <PwaSupport />
       </body>

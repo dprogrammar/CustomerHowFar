@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MapPinned,
+  MessageCircleQuestion,
   Settings,
   Activity,
   Users,
@@ -67,6 +68,12 @@ const ITEMS: {
     href: "/admin/service-areas",
     icon: MapPinned,
     match: (p) => p.startsWith("/admin/service-areas"),
+  },
+  {
+    label: "Help assistant",
+    href: "/admin/help-assistant",
+    icon: MessageCircleQuestion,
+    match: (p) => p.startsWith("/admin/help-assistant"),
   },
   {
     label: "Settings",
