@@ -48,6 +48,8 @@ export const RATE_LIMITS = {
   "chat-feedback": [{ windowSeconds: HOUR, max: 60 }],
   /** Turning push on for a device (per user). */
   "push-subscribe": [{ windowSeconds: HOUR, max: 20 }],
+  /** QR code scans counted per IP (analytics only; extra scans are just not counted). */
+  "qr-visit": [{ windowSeconds: HOUR, max: 30 }],
 } satisfies Record<string, Window[]>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

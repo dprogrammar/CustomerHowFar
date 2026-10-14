@@ -186,6 +186,13 @@ policies, so the public Supabase Data API cannot read or write anything.
   the in-app notification and the push together (`src/lib/notifications/deliver.ts`).
   In test mode (`EMAIL_TEST_OUTBOX` set) only `@example.com` test accounts are notified.
 
+### QR codes (flyers and adverts)
+
+- `QrCampaign`: a QR code made in /admin/qr-codes (generated in the browser with the open-source
+  `qrcode` library; it points straight to `/start?src=qr&campaign=name`, so it never expires).
+  Only aggregate counts are kept: scans, sign-ups and new listings. A first-party cookie
+  (`chf_qr`, campaign name only, 30 days) credits a later sign-up or listing to the campaign.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

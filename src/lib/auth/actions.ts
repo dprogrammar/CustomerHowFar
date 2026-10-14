@@ -27,6 +27,7 @@ import { authErrorMessage } from "./errors";
 import { ensureProfile } from "./profile";
 import { safeRedirectPath } from "./redirect";
 import { getSessionUser } from "./session";
+import { recordQrConversion } from "@/lib/qr/campaigns";
 
 export type FormState = {
   status: "idle" | "error" | "success";
@@ -148,6 +149,8 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
       values,
     };
   }
+  // A new account from someone who arrived through one of our QR codes (aggregate count only).
+  if (data.user) await recordQrConversion("signups");
   if (data.session && data.user) {
     // Email confirmation is turned off: the user is signed in straight away.
     await ensureProfile({ id: data.user.id, email, fullName });

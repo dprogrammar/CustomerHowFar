@@ -285,6 +285,12 @@ export default function PrivacyPage() {
           <strong>Counting cookies:</strong> small, short-lived cookies (2 minutes to 6 hours) so a
           page view or contact tap is counted once. They hold no personal data.
         </li>
+        <li>
+          <strong>QR code cookie:</strong> if you arrive by scanning one of our QR codes (for
+          example on a flyer), a cookie remembers which one for 30 days, so we can count how many
+          visits, sign-ups and new listings each flyer brings. It holds only the flyer&apos;s name,
+          no personal data.
+        </li>
       </ul>
       <p>
         Your browser also remembers, on your device only, whether you&apos;ve opened or closed the

@@ -40,6 +40,7 @@ import {
 } from "./rules";
 import { revalidatePublicBusiness } from "./revalidate";
 import { uniqueBusinessSlug } from "./slug";
+import { recordQrConversion } from "@/lib/qr/campaigns";
 
 // ---------------------------------------------------------------------------------------
 // Helpers. Every action re-reads the session and ownership on the server; nothing the
@@ -150,6 +151,8 @@ export async function saveBasicsAction(
     await ensureProfile(session);
     const created = await createDraft(session.id, data);
     if ("error" in created) return { status: "error", message: created.error, values };
+    // A new listing from someone who arrived through one of our QR codes (aggregate count only).
+    await recordQrConversion("listings");
     redirect(stepUrl(created.id, 2));
   }
 

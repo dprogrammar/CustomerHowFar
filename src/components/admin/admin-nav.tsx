@@ -11,6 +11,7 @@ import {
   ListChecks,
   MapPinned,
   MessageCircleQuestion,
+  QrCode,
   Settings,
   Activity,
   Users,
@@ -74,6 +75,12 @@ const ITEMS: {
     href: "/admin/help-assistant",
     icon: MessageCircleQuestion,
     match: (p) => p.startsWith("/admin/help-assistant"),
+  },
+  {
+    label: "QR codes",
+    href: "/admin/qr-codes",
+    icon: QrCode,
+    match: (p) => p.startsWith("/admin/qr-codes"),
   },
   {
     label: "Settings",

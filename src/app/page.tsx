@@ -5,6 +5,7 @@ import { isHomepageFreePromoOn } from "@/lib/payments/fee-switch";
 import { BusinessCta } from "@/components/home/business-cta";
 import { CategoryGrid } from "@/components/home/category-grid";
 import { FeaturedBusinesses } from "@/components/home/featured-businesses";
+import { FocusSearch } from "@/components/home/focus-search";
 import { FreePromoBar } from "@/components/home/free-promo";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
@@ -57,6 +58,7 @@ export default async function Home() {
   return (
     <>
       <StructuredData />
+      <FocusSearch />
       {freePromo && <FreePromoBar />}
       <Hero freePromo={freePromo} />
       <CategoryGrid />
