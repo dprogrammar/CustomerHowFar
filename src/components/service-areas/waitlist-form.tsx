@@ -13,13 +13,11 @@ const initial: WaitlistState = { status: "idle" };
 export function WaitlistForm({
   states,
   defaultStateId,
-  defaultEmail,
   defaultRole = "CUSTOMER",
 }: {
   /** States that aren't live yet. */
   states: { id: number; name: string }[];
   defaultStateId?: number;
-  defaultEmail?: string;
   defaultRole?: WaitlistRoleValue;
 }) {
   const [state, action, pending] = useActionState(joinWaitlistAction, initial);
@@ -61,7 +59,8 @@ export function WaitlistForm({
         type="email"
         autoComplete="email"
         required
-        defaultValue={state.values?.email ?? defaultEmail ?? ""}
+        placeholder="you@example.com"
+        defaultValue={state.values?.email ?? ""}
         errors={e.email}
       />
       <TextField

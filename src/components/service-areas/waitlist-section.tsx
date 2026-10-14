@@ -1,12 +1,8 @@
-import { getSessionUser } from "@/lib/auth/session";
 import { getStates } from "@/lib/data/catalog";
 import type { WaitlistRoleValue } from "@/lib/service-areas/rules";
 import { WaitlistForm } from "./waitlist-form";
 
-/**
- * Waitlist form with the coming-soon states and, for logged-in visitors, their email prefilled.
- * Reads the session, so render it inside <Suspense>.
- */
+/** Waitlist form with the coming-soon states. The email field is never prefilled. */
 export async function WaitlistFormWithUser({
   defaultStateSlug,
   defaultRole,
@@ -14,14 +10,13 @@ export async function WaitlistFormWithUser({
   defaultStateSlug?: string;
   defaultRole?: WaitlistRoleValue;
 }) {
-  const [states, session] = await Promise.all([getStates(), getSessionUser()]);
+  const states = await getStates();
   const comingSoon = states.filter((s) => !s.isActive);
   const defaultState = comingSoon.find((s) => s.slug === defaultStateSlug);
   return (
     <WaitlistForm
       states={comingSoon.map((s) => ({ id: s.id, name: s.name }))}
       defaultStateId={defaultState?.id}
-      defaultEmail={session?.email}
       defaultRole={defaultRole}
     />
   );

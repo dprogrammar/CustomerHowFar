@@ -160,7 +160,6 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
         businessId={business.id}
         states={states}
         lgasByState={lgasByState}
-        email={user.email}
         defaults={{
           stateId: business.stateId,
           lgaId: business.lgaId,

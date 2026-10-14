@@ -21,14 +21,11 @@ export function StepLocation({
   states,
   lgasByState,
   defaults,
-  email,
 }: {
   businessId: string;
   /** All states; only live ones can be chosen (plus the listing's current state, if any). */
   states: StateOption[];
   lgasByState: Record<number, Option[]>;
-  /** Prefills the waitlist form. */
-  email?: string;
   defaults: {
     stateId: number | null;
     lgaId: number | null;
@@ -165,7 +162,6 @@ export function StepLocation({
           <div className="mt-4">
             <WaitlistForm
               states={comingSoon.map(({ id, name }) => ({ id, name }))}
-              defaultEmail={email}
               defaultRole="BUSINESS"
             />
           </div>
