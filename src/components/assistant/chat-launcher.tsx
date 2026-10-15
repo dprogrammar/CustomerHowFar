@@ -1,7 +1,6 @@
 "use client";
 
 import { lazy, Suspense, useState, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
 import { LoaderCircle, MessageCircle, X } from "lucide-react";
 import { ASSISTANT } from "@/config/assistant";
 import { cn } from "@/lib/utils";
@@ -52,10 +51,11 @@ function subscribe(listener: () => void) {
   };
 }
 
-/** Not on admin pages (they have their own tools). */
+/**
+ * Rendered the same everywhere (server and browser agree, so no hydration errors). Admin pages
+ * hide it with CSS via the admin layout's data-admin-shell marker (see globals.css).
+ */
 export function ChatLauncher() {
-  const pathname = usePathname();
-  if (pathname?.startsWith("/admin")) return null;
   return <Launcher />;
 }
 
@@ -112,7 +112,7 @@ function Launcher() {
           aria-haspopup="dialog"
           aria-expanded={open}
           className={cn(
-            "relative flex size-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-[0_8px_24px_-6px_rgb(0_108_66/0.55),0_2px_6px_rgb(17_24_39/0.15)] transition-transform hover:scale-105 hover:bg-brand-700 active:scale-95 focus-visible:outline-offset-4",
+            "relative flex size-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-[0_8px_24px_-6px_rgb(0_108_66/0.55),0_2px_6px_rgb(17_24_39/0.15)] transition-transform hover:scale-105 hover:bg-brand-700 focus-visible:outline-offset-4 active:scale-95",
             pulse && "chat-pulse",
           )}
         >

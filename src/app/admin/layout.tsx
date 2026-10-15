@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 async function AdminShell({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
   return (
-    <div className="flex-1 bg-surface py-6 sm:py-8">
+    <div data-admin-shell className="flex-1 bg-surface py-6 sm:py-8">
       <Container>
         <div className="mb-5 flex items-center gap-2 text-sm text-gray-700">
           <ShieldCheck aria-hidden="true" className="size-4 text-brand-700" />
@@ -37,7 +37,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <Suspense
       fallback={
-        <div className="flex-1 bg-surface py-8" aria-hidden="true">
+        <div data-admin-shell className="flex-1 bg-surface py-8" aria-hidden="true">
           <Container>
             <div className="h-96 animate-pulse rounded-2xl bg-muted" />
           </Container>

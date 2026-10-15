@@ -73,7 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<BottomNavView pathname={null} />}>
           <BottomNav />
         </Suspense>
-        {/* Help chat button; the chat itself loads only when tapped. Hidden on admin pages. */}
+        {/* Help chat button; the chat itself loads only when tapped. Hidden on admin pages (CSS). */}
         <Suspense fallback={null}>
           <ChatLauncher />
         </Suspense>

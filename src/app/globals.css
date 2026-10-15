@@ -148,7 +148,7 @@ body.has-contact-bar nav[aria-label="Bottom navigation"] {
 }
 
 /* Room under the footer so the chat button never covers the end of a page. */
-body:has(> .chat-launcher) > footer {
+body:has(> .chat-launcher):not(:has([data-admin-shell])) > footer {
   padding-bottom: 4.5rem;
 }
 
@@ -167,5 +167,12 @@ body:has(> .chat-launcher) > footer {
   }
 }
 body.has-push-prompt .chat-launcher {
+  display: none;
+}
+
+/* Not on admin pages (they have their own tools). Decided by the admin layout being on the page,
+   not by the address: the 404 that non-admins get for /admin URLs is a normal page, and a
+   URL-based check made the browser disagree with the server-rendered HTML there. */
+body:has([data-admin-shell]) .chat-launcher {
   display: none;
 }
