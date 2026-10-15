@@ -45,15 +45,24 @@ Open http://localhost:3000 in your browser.
 
 ## Environments
 
-There are two Supabase projects. **Development and tests never use the production database.**
+There are two Supabase projects. **Development, tests and the staging site never use the
+production database.**
 
-|                    | Development                                | Production                                    |
-| ------------------ | ------------------------------------------ | --------------------------------------------- |
-| Supabase project   | `customerhowfar-dev`                       | the live project (ref `vzgbwqthcrctahysaoyf`) |
-| Settings live in   | `.env.local` (your machine)                | Vercel project settings                       |
-| Emails             | written to `EMAIL_TEST_OUTBOX`, never sent | sent by Brevo                                 |
-| Push notifications | off (`PUSH_NOTIFICATIONS=off`)             | on                                            |
-| Cloudinary folder  | `dev/customerhowfar` (`CLOUDINARY_FOLDER`) | `customerhowfar`                              |
+|                  | Development (your machine)     | Staging                                                   | Production                                |
+| ---------------- | ------------------------------ | --------------------------------------------------------- | ----------------------------------------- |
+| Address          | http://localhost:3000          | https://staging.customerhowfar.com.ng                     | https://www.customerhowfar.com.ng         |
+| Git branch       | any                            | `staging`                                                 | `main`                                    |
+| Supabase project | `customerhowfar-dev`           | `customerhowfar-dev` (shared with dev)                    | the live project (`vzgbwqthcrctahysaoyf`) |
+| Settings         | `.env.local`                   | Vercel, Preview environment                               | Vercel, Production environment            |
+| Emails           | test outbox file, never sent   | sent, subject starts with `[TEST]`, never to test domains | sent                                      |
+| Push             | off (`PUSH_NOTIFICATIONS=off`) | off                                                       | on                                        |
+| Daily cron job   | run by tests only              | off                                                       | on (03:00 UTC)                            |
+| Search engines   | n/a                            | blocked (noindex, robots.txt)                             | indexed                                   |
+| Cloudinary       | `dev/customerhowfar`           | `dev/customerhowfar`                                      | `customerhowfar`                          |
+
+The staging site shows a yellow "TEST SITE" banner on every page. Staging is any Vercel
+_preview_ deployment (`VERCEL_ENV=preview`, see `src/config/environment.ts`); its build refuses to
+run if any Preview database or Supabase setting points at production.
 
 - **`.env.prod.local`** (git-ignored, on your machine only) holds the production values. It is
   only for deliberate one-off production tasks, never for development or tests. Never name it
@@ -71,8 +80,34 @@ There are two Supabase projects. **Development and tests never use the productio
   A production deploy on Vercel applies pending migrations (`prisma migrate deploy` with the
   production `DIRECT_URL`) before building. If a migration fails, the deploy stops and the current
   version keeps running. Keep migrations backward compatible (add, don't rename or drop in the
-  same deploy), because the old code keeps running until the new build is live. Preview deploys
-  never run migrations.
+  same deploy), because the old code keeps running until the new build is live. A deploy of the
+  `staging` branch does the same on the dev database; other preview branches never migrate.
+
+## Releasing
+
+New features never go straight to the live site:
+
+1. **Build on staging.** Work is committed and pushed to the `staging` branch. Vercel deploys it
+   to https://staging.customerhowfar.com.ng (dev database, migrations applied to it
+   automatically).
+2. **Testers test.** Testers sign up on the staging site with their own email addresses (they get
+   `[TEST]` emails there) and try the new features. Nothing they do touches real users or data.
+3. **"Release to production".** Only when the owner says so, `staging` is merged into `main` and
+   pushed. Vercel builds production: pending migrations are applied to the production database
+   first (a failure stops the deploy and the current version keeps running), then the new
+   version goes live.
+
+```bash
+git checkout main && git pull
+git merge --no-ff staging -m "Release to production"
+git push origin main
+git checkout staging
+```
+
+Fixes that are urgent for the live site follow the same path (staging first, then release), so
+`main` never has changes that staging doesn't. Running `npm run test:e2e` uses the same dev
+database as the staging site: it removes only what it created and resets the dev baseline
+settings (fee off, homepage promotion on), so avoid running it while testers are using staging.
 
 ## Testing
 

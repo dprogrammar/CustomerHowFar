@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { isStagingSite } from "@/config/environment";
 import { UPLOAD_FOLDER } from "@/config/uploads";
 import { runDailyJob } from "@/lib/jobs/daily";
 import { cleanOrphanedUploads } from "@/lib/storage/orphans";
@@ -23,7 +24,9 @@ function authorized(request: Request) {
  * the 24-hour safety age, for testing on known test files.
  */
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) return new Response("Not found", { status: 404, headers: NO_STORE });
+  // The daily job runs on the live site only (Vercel also schedules crons on production only).
+  if (isStagingSite() || !authorized(request))
+    return new Response("Not found", { status: 404, headers: NO_STORE });
   const params = request.nextUrl.searchParams;
   try {
     if (params.get("task") === "orphans") {

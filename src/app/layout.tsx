@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { isStagingSite } from "@/config/environment";
 import { getSiteUrl, siteConfig } from "@/config/site";
 import { Suspense } from "react";
 import { preconnect } from "react-dom";
@@ -44,6 +45,10 @@ export const metadata: Metadata = {
     description: siteConfig.description,
   },
   formatDetection: { telephone: false },
+  // The staging site is never indexed (also sent as an X-Robots-Tag header on every response).
+  ...(isStagingSite()
+    ? { robots: { index: false, follow: false, googleBot: { index: false, follow: false } } }
+    : {}),
 };
 
 export const viewport: Viewport = {
@@ -65,6 +70,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to main content
         </a>
+        {isStagingSite() && (
+          <div
+            role="note"
+            className="bg-yellow-300 px-4 py-1 text-center text-xs font-bold tracking-wide text-gray-950 sm:text-sm"
+          >
+            TEST SITE: data here is not real and may be deleted
+          </div>
+        )}
         <SiteHeader />
         <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
           {children}

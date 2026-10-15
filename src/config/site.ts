@@ -27,6 +27,11 @@ export type SiteConfig = typeof siteConfig;
 export function getSiteUrl() {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;
   if (explicit) return explicit.replace(/\/+$/, "");
+  // Staging/preview deploys must never point links or emails at the production domain.
+  if (process.env.VERCEL_ENV === "preview") {
+    const own = process.env.VERCEL_BRANCH_URL ?? process.env.VERCEL_URL;
+    if (own) return `https://${own}`;
+  }
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   if (vercel) return `https://${vercel}`;
   return "http://localhost:3000";

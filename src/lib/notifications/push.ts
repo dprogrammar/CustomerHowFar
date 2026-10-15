@@ -1,5 +1,6 @@
 import "server-only";
 import webpush from "web-push";
+import { isStagingSite } from "@/config/environment";
 import { prisma } from "@/lib/prisma";
 
 // Web Push with the standard Push API and our own VAPID keys (no paid push service). The
@@ -25,10 +26,11 @@ export function isAllowedPushEndpoint(endpoint: string) {
 }
 
 /**
- * PUSH_NOTIFICATIONS=off (development) switches push off completely: no offer, no new devices,
- * nothing sent. Tests and dev data can then never reach anyone's phone.
+ * Push runs on the live site only. PUSH_NOTIFICATIONS=off (development) and the staging site
+ * switch it off completely: no offer, no new devices, nothing sent. Tests, dev and staging data
+ * can then never reach anyone's phone.
  */
-export const isPushDisabled = () => process.env.PUSH_NOTIFICATIONS === "off";
+export const isPushDisabled = () => process.env.PUSH_NOTIFICATIONS === "off" || isStagingSite();
 
 export function pushPublicKey() {
   if (isPushDisabled()) return null;

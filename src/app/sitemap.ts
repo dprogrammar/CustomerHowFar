@@ -1,9 +1,12 @@
 import type { MetadataRoute } from "next";
+import { isStagingSite } from "@/config/environment";
 import { getSiteUrl } from "@/config/site";
 import { getCategoriesWithCounts, getSitemapData } from "@/lib/business/public";
 
 /** Homepage, category pages, category+state pages with listings, and every approved business. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // The staging site lists nothing (it's never indexed).
+  if (isStagingSite()) return [];
   const site = getSiteUrl();
   const [categories, { businesses, combos }] = await Promise.all([
     getCategoriesWithCounts(),
