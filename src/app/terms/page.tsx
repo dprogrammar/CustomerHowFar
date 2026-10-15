@@ -163,8 +163,8 @@ export default function TermsPage() {
       <h2 id="id-badge">7. The &ldquo;ID submitted&rdquo; badge</h2>
       <p>
         Business owners can share a photo of a government ID and a selfie holding it. Our team
-        checks them <strong>visually</strong>. When the check is accepted, the owner&apos;s listings
-        show an &ldquo;ID submitted&rdquo; badge.
+        reviews them. When the check is accepted, the owner&apos;s listings show an &ldquo;ID
+        submitted&rdquo; badge.
       </p>
       <p>
         <strong>This is not an official government verification</strong> and it is not a guarantee

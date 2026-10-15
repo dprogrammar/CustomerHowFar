@@ -921,7 +921,7 @@ try {
   check(
     "popover explains it honestly",
     await P.waitText(
-      "This business owner submitted a government ID and a selfie, which the CustomerHowFar team checked visually. This is not an official government verification.",
+      "This business owner submitted a government ID and a selfie, which were reviewed by the CustomerHowFar team. This is not an official government verification.",
     ),
   );
   await P.axe("business page with ID popover open");

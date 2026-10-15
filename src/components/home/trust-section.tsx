@@ -6,7 +6,7 @@ const POINTS: { title: string; description: string; icon: LucideIcon }[] = [
   {
     title: "Reviewed listings",
     description:
-      "Our team reviews every listing before it goes live. The \u201cID submitted\u201d badge means the owner shared a government ID and selfie, which we checked by eye.",
+      "Our team reviews every listing before it goes live. The \u201cID submitted\u201d badge means the owner shared a government ID and a selfie, which our team reviewed.",
     icon: ShieldCheck,
   },
   {

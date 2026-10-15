@@ -53,7 +53,7 @@ function Intro() {
     {
       icon: IdCard,
       title: "What this check is",
-      text: "A visual check by our team, not a government check. We never ask for your ID number.",
+      text: "Reviewed by our team, not a government check. We never ask for your ID number.",
     },
   ];
   return (

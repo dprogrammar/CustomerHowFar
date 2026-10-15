@@ -3,6 +3,9 @@ export const siteConfig = {
   tagline: "Find trusted artisans and businesses near you.",
   description:
     "Find trusted artisans and businesses across Nigeria. See real photos of their work and contact tailors, electricians, plumbers, mechanics, caterers and more directly on WhatsApp.",
+  /** Shown in the site footer. */
+  footerDescription:
+    "Find trusted businesses across Nigeria, including tailors, electricians, plumbers, mechanics, caterers and more. View real photos of their work and contact them directly on WhatsApp.",
   keywords: [
     "Nigeria artisans",
     "find artisans near me",

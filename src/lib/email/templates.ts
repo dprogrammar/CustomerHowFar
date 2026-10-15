@@ -523,7 +523,7 @@ export function identityRejectedEmail(input: {
       heading: "We couldn't accept your ID check",
       body:
         paragraph(`Hi ${escapeHtml(first)},`) +
-        paragraph("Our team looked at your ID and selfie but couldn't accept them:") +
+        paragraph("Our team reviewed your ID and selfie but couldn't accept them:") +
         quote(input.reason) +
         button("Submit again", input.resubmitUrl) +
         paragraph(

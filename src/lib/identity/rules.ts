@@ -27,10 +27,10 @@ export const RETENTION_DAYS = 90;
 /** ID photos are resized to at most this many pixels so ID text stays readable. */
 export const ID_IMAGE_MAX_DIMENSION = 2000;
 
-/** The only public trust badge. Honest wording: this is a visual check, not a government check. */
+/** The only public trust badge. Honest wording: reviewed by our team, not a government check. */
 export const ID_BADGE_LABEL = "ID submitted";
 export const ID_BADGE_EXPLANATION =
-  "This business owner submitted a government ID and a selfie, which the CustomerHowFar team checked visually. This is not an official government verification.";
+  "This business owner submitted a government ID and a selfie, which were reviewed by the CustomerHowFar team. This is not an official government verification.";
 
 export const REJECTION_QUICK_REASONS = [
   "Photo blurry or unreadable",
