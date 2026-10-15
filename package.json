@@ -19,7 +19,10 @@
     "make-admin": "tsx scripts/make-admin.ts",
     "dev:admin": "tsx scripts/dev-admin.ts",
     "email:test": "tsx --conditions=react-server scripts/send-test-emails.ts",
-    "test:start": "node --test tests/start-page.test.mjs"
+    "test:start": "node --test tests/start-page.test.mjs",
+    "test:unit": "node tests/e2e/run.mjs --unit",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test:lighthouse": "node tests/e2e/run.mjs --lighthouse"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
@@ -48,13 +51,19 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "axe-core": "4.14.0",
+    "chrome-launcher": "1.2.2",
     "dotenv": "^18.0.7",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "eslint-config-prettier": "^10.1.8",
+    "jsqr": "1.4.0",
+    "lighthouse": "12.8.2",
+    "pngjs": "7.0.0",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "prisma": "7.10.0",
+    "puppeteer-core": "25.13.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

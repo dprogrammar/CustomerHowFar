@@ -46,15 +46,21 @@ export function StartActionsView({ firstName }: { firstName: string | null }) {
           <Store aria-hidden="true" />I own a business
         </Link>
       </div>
-      <p className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-brand-50">
+      {/* Both versions are inline text of the same height (two lines on phones), so the
+          signed-in links replacing the sign-up links never shift the page. */}
+      <p className="mt-4 flex min-h-11 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-brand-50 md:min-h-0">
         {signedIn ? (
           <>
-            <Link href={ROUTES.account} className={linkClass}>
-              Continue to my account
-            </Link>
-            <Link href={ROUTES.listBusiness} className={linkClass}>
-              List a business
-            </Link>
+            <span>
+              <Link href={ROUTES.account} className={linkClass}>
+                Continue to my account
+              </Link>
+            </span>
+            <span>
+              <Link href={ROUTES.listBusiness} className={linkClass}>
+                List a business
+              </Link>
+            </span>
           </>
         ) : (
           <>

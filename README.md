@@ -27,18 +27,21 @@ Open http://localhost:3000 in your browser.
 
 ## Scripts
 
-| Command                | Description                                       |
-| ---------------------- | ------------------------------------------------- |
-| `npm run dev`          | Start the development server                      |
-| `npm run build`        | Build (on Vercel production: migrate, then build) |
-| `npm run start`        | Run the production build                          |
-| `npm run lint`         | Lint the code with ESLint                         |
-| `npm run format`       | Format the code with Prettier                     |
-| `npm run format:check` | Check formatting without writing                  |
-| `npm run test:start`   | Check that /start (the QR code page) still works  |
-| `npm run db:seed`      | Seed categories, states/LGAs and settings         |
-| `npm run dev:admin`    | Create a dev admin account and set its password   |
-| `npm run make-admin`   | Promote a signed-up user to admin                 |
+| Command                   | Description                                       |
+| ------------------------- | ------------------------------------------------- |
+| `npm run dev`             | Start the development server                      |
+| `npm run build`           | Build (on Vercel production: migrate, then build) |
+| `npm run start`           | Run the production build                          |
+| `npm run lint`            | Lint the code with ESLint                         |
+| `npm run format`          | Format the code with Prettier                     |
+| `npm run format:check`    | Check formatting without writing                  |
+| `npm run test:start`      | Check that /start (the QR code page) still works  |
+| `npm run test:unit`       | Fast checks that need no app server               |
+| `npm run test:e2e`        | Full regression (see Testing)                     |
+| `npm run test:lighthouse` | Lighthouse scores for key pages                   |
+| `npm run db:seed`         | Seed categories, states/LGAs and settings         |
+| `npm run dev:admin`       | Create a dev admin account and set its password   |
+| `npm run make-admin`      | Promote a signed-up user to admin                 |
 
 ## Environments
 
@@ -70,6 +73,49 @@ There are two Supabase projects. **Development and tests never use the productio
   version keeps running. Keep migrations backward compatible (add, don't rename or drop in the
   same deploy), because the old code keeps running until the new build is live. Preview deploys
   never run migrations.
+
+## Testing
+
+The regression and end-to-end suites live in `tests/e2e/`. They drive a real browser against a
+local production build and use the **dev** project only: every suite goes through the safety
+guard, and the runner also checks which project the Next.js server would load before starting
+it. They never send real emails (test outbox) or push notifications, only create accounts with
+`chf-e2e-…@example.com` addresses, and clean up after themselves.
+
+**Needs:** `.env.local` with the dev project's values (see Environments), the dev database
+migrated and seeded, and Chrome or Edge installed (set `CHROME_PATH` if it isn't found).
+
+```bash
+npm run test:unit                          # fast: database, help-assistant and analytics rules
+npm run test:e2e                           # everything: builds, starts a server on :3000, runs all suites
+npm run test:e2e -- test-public test-admin # only these suites (list them with: npm run test:e2e -- --list)
+npm run test:e2e -- --no-build test-trust  # reuse the current build
+npm run test:lighthouse                    # Lighthouse scores for home, search, category, business pages
+BASE_URL=https://www.customerhowfar.com.ng npm run test:start   # read-only check of the live /start page
+```
+
+What a run does: checks the environment is dev, resets dev to its baseline, builds, starts
+`next start` with emails going to a test outbox file, runs the suites in order, stops the server,
+then `dev-cleanup.mjs` removes
+everything the run created (test users, listings, uploads in `dev/customerhowfar`, analytics,
+rate-limit rows) and resets the dev baseline (fee off, homepage promotion on, Lagos live). Each
+suite's full log, screenshots and the outbox are in `tests/e2e/.output/` (git-ignored); the
+console shows a PASS/FAIL line per suite with the failing checks. With `--no-build`, pages the
+previous server regenerated (fee and promotion wording, category counts) can be out of date, so
+`test-start-qr`, `test-free-promo`, `test-fee-wording` and `test-public` need a full run.
+
+- **Suites** (`tests/e2e/test-*.mjs`) each create their own data, check one area (listings,
+  search, admin, payments, ID checks, notifications, analytics, accessibility at 360px…) and
+  delete it again. `notify-trigger.ts` and `analytics-trigger.mts` call app functions directly
+  (for example with the clock set to a past date).
+- **Clean-up**: `dev-cleanup.mjs` (end of every run) and `cleanup-test-users.mjs` (removes any
+  leftover `chf-e2e-` users and their files) refuse to run on anything but the dev project.
+- **No real emails**: app emails go to the test outbox. The two steps that make Supabase itself
+  send an email (a real sign-up, and a password reset for an existing account) are skipped
+  unless you set `E2E_SEND_AUTH_EMAILS=1`; the dev project's built-in mailer only allows a few
+  emails an hour.
+- Never point these at production: the guard refuses, and `ALLOW_PRODUCTION=yes` is not meant
+  for test runs.
 
 ## Project structure
 

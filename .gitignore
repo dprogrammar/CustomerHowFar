@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Development test outbox
 .dev-outbox.jsonl
+
+# End-to-end test output (screenshots, logs, test email outbox)
+tests/e2e/.output/
