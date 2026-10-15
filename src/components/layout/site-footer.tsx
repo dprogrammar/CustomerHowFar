@@ -25,7 +25,7 @@ export async function SiteFooter() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_2fr]">
           <div className="max-w-sm">
             <Logo inverse />
-            <p className="mt-4 text-sm leading-6 text-gray-400">{siteConfig.description}</p>
+            <p className="mt-4 text-sm leading-6 text-gray-400">{siteConfig.footerDescription}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">

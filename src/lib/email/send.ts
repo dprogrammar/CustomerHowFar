@@ -1,5 +1,6 @@
 import "server-only";
 import { appendFile } from "node:fs/promises";
+import { isStagingSite } from "@/config/environment";
 
 export type EmailMessage = {
   to: { email: string; name?: string };
@@ -15,6 +16,15 @@ export type EmailMessage = {
 };
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+
+/** Reserved-for-testing domains (RFC 2606/6761): example.com/.net/.org and .test/.example/.invalid/.localhost. */
+export function isReservedTestAddress(email: string) {
+  const domain = email.trim().toLowerCase().split("@").pop() ?? "";
+  return (
+    /(^|\.)example\.(com|net|org)$/.test(domain) ||
+    /\.(test|example|invalid|localhost)$/.test(domain)
+  );
+}
 
 /**
  * Sends a transactional email via Brevo. Never throws: returns false and logs (without
@@ -36,6 +46,17 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
       console.error("[email] could not write test outbox", { tag: message.tag });
       return false;
     }
+  }
+
+  // Staging site: every subject says [TEST], and nothing goes to reserved test domains (the
+  // automated tests' accounts in the shared dev database), so only real testers who signed up on
+  // staging get emails.
+  if (isStagingSite()) {
+    if (isReservedTestAddress(message.to.email)) {
+      console.info("[email] staging: test address skipped", { tag: message.tag });
+      return true;
+    }
+    message = { ...message, subject: `[TEST] ${message.subject}` };
   }
 
   const apiKey = process.env.BREVO_API_KEY;

@@ -12,6 +12,16 @@ if (!process.env.VERCEL && process.env.ALLOW_PRODUCTION !== "yes" && productionV
       "(see README, Environments).",
   );
 }
+// The staging site (Vercel preview) must use the dev project: a production value in the Preview
+// environment variables stops the build instead of connecting staging to the live database.
+const isStaging = process.env.VERCEL_ENV === "preview";
+if (isStaging && productionVars().length) {
+  throw new Error(
+    `Staging/preview build refused: ${productionVars().join(", ")} ` +
+      `${productionVars().length === 1 ? "points" : "point"} at the PRODUCTION ` +
+      "Supabase project. Set the dev project's values for the Preview environment in Vercel.",
+  );
+}
 
 const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const isDev = process.env.NODE_ENV === "development";
@@ -126,6 +136,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // The staging site is never indexed, whatever a page's own metadata says.
+      ...(isStaging
+        ? [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }]
+        : []),
       // The ID check page lets owners take photos with the camera.
       {
         source: "/account/verify-identity",

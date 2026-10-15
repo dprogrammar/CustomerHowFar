@@ -186,6 +186,11 @@ console.log("\nKeyboard and menu (phone 360px)");
 
   await page.type("#hero-search-q", "tailor");
   await page.select("#hero-search-state", "lagos");
+  // Bring the button to the middle of the screen first: at the bottom edge the fixed bottom
+  // navigation sits on top of it and would take the click.
+  await page.$eval('form[aria-label="Find a service"] button[type="submit"]', (b) =>
+    b.scrollIntoView({ block: "center" }),
+  );
   await Promise.all([
     page.waitForNavigation(),
     page.click('form[aria-label="Find a service"] button[type="submit"]'),

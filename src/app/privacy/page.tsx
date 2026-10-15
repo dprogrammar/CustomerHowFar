@@ -130,8 +130,8 @@ export default function PrivacyPage() {
         <li>To publish business listings and help customers find and contact businesses.</li>
         <li>To review listings before they go live and keep the site safe from scams.</li>
         <li>
-          To check business owners&apos; ID and selfie visually (the &ldquo;ID submitted&rdquo;
-          badge).
+          To have our team review business owners&apos; ID and selfie (the &ldquo;ID
+          submitted&rdquo; badge).
         </li>
         <li>To confirm listing fee payments and keep accounting records.</li>
         <li>To show genuine reviews and act on reports.</li>

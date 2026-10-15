@@ -36,7 +36,7 @@ export default function SafetyPage() {
         </li>
         <li>
           <strong>&ldquo;ID submitted&rdquo; is a helpful sign, not a guarantee.</strong> It means
-          our team visually checked the owner&apos;s ID and selfie. It is not an official government
+          the owner&apos;s ID and selfie were reviewed by our team. It is not an official government
           verification.
         </li>
       </ul>
