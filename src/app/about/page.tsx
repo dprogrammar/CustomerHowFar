@@ -43,7 +43,7 @@ export default function AboutPage() {
     >
       <h2 id="story">Our story</h2>
       <p>
-        Across Nigeria, millions of skilled tailors, electricians, plumbers, mechanics, caterers,
+        Across Nigeria, millions of skilled tailors (Fashion Designers), electricians, plumbers, mechanics, caterers,
         hairstylists and other artisans do excellent work, but most customers only find them by word
         of mouth. Meanwhile, people looking for help often don&apos;t know who to trust, and many
         have been disappointed by someone they found online.
