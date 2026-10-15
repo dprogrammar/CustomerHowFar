@@ -78,7 +78,20 @@ export default function PrivacyPage() {
         <li>
           <strong>Contact click analytics:</strong> when someone taps WhatsApp, Call or Email on a
           listing we record the business, the type of contact and the time, and your account if you
-          are logged in. We also count page views (numbers only).
+          are logged in (so we can send you a rating reminder).
+        </li>
+        <li>
+          <strong>Anonymous usage statistics:</strong> we count visits with our own simple tools (no
+          Google Analytics or other outside service). For each page view we note only the type of
+          page (for example &ldquo;search&rdquo; or &ldquo;business page&rdquo;), the kind of device
+          (phone, tablet or computer) and, for the first page, the kind of site you came from (for
+          example Google, WhatsApp or one of our QR codes), never the full web address. To count
+          visitors without cookies, we turn your IP address and browser details into a scrambled
+          visitor code using a random key that changes every day; the old key is deleted, so the
+          code can&apos;t be traced back to you or linked to your visits on other days. We never
+          store your IP address or browser details for this. For searches we keep the words (with
+          phone numbers and email addresses removed, at most 100 characters), the filters and how
+          many results were found, never linked to your account.
         </li>
         <li>
           <strong>Reviews and reports</strong> you write, and <strong>messages</strong> you send us
@@ -175,8 +188,12 @@ export default function PrivacyPage() {
           again.
         </li>
         <li>
-          <strong>Business owners:</strong> see counts of views and contact clicks, never who
-          clicked.
+          <strong>Business owners:</strong> see counts of views and contact clicks for their own
+          listings only, never who clicked. View counts are never shown publicly.
+        </li>
+        <li>
+          <strong>The CustomerHowFar admin team:</strong> sees site-wide totals (for example
+          visitors per day, popular searches and categories), never individual people.
         </li>
         <li>We may share data if the law requires it, for example with the police or a court.</li>
       </ul>
@@ -242,6 +259,12 @@ export default function PrivacyPage() {
         <li>
           <strong>Scrambled IP addresses for rate limiting:</strong> up to two days.
         </li>
+        <li>
+          <strong>Anonymous usage statistics:</strong> detailed events (with the daily visitor code)
+          are deleted after 7 days, once they have been added up into daily totals. The key used to
+          make visitor codes is deleted every day. The daily totals (numbers only, no visitor codes)
+          are kept.
+        </li>
       </ul>
 
       <h2 id="rights">9. Your rights</h2>
@@ -283,7 +306,8 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Counting cookies:</strong> small, short-lived cookies (2 minutes to 6 hours) so a
-          page view or contact tap is counted once. They hold no personal data.
+          page view or contact tap is counted once. They hold no personal data. Our usage statistics
+          use no other cookies.
         </li>
         <li>
           <strong>QR code cookie:</strong> if you arrive by scanning one of our QR codes (for

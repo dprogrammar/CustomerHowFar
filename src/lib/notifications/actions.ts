@@ -114,6 +114,7 @@ const CATEGORY = z.enum([
   "RATING_REMINDER",
   "STATE_LAUNCH",
   "ADMIN",
+  "WEEKLY_STATS",
 ]);
 
 export async function setNotificationPreferenceAction(input: {

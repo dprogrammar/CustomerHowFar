@@ -273,6 +273,8 @@ model Business {
   moderationDecisions ModerationDecision[]
   reports             BusinessReport[]
   ratingReminders     RatingReminder[]
+  analyticsEvents     AnalyticsEvent[]
+  dailyStats          BusinessStatsDaily[]
 
   // Public listings always filter by status, so status leads most composite indexes.
   @@index([status, createdAt(sort: Desc)])
@@ -891,6 +893,8 @@ enum NotificationCategory {
   STATE_LAUNCH
   /// New listings, transfer proofs, ID checks and reports (admins only).
   ADMIN
+  /// Weekly views and contacts summary for business owners.
+  WEEKLY_STATS
 
   @@map("notification_category")
 }
@@ -992,4 +996,91 @@ model QrCampaign {
 
   @@index([createdAt(sort: Desc)])
   @@map("qr_campaigns")
+}
+
+// ---------------------------------------------------------------------------
+// Analytics (first-party, anonymous). See src/lib/analytics and docs/DATA_MODEL.md.
+// No IP addresses, user agents, referrer URLs, account ids or cookies are stored.
+// ---------------------------------------------------------------------------
+
+enum AnalyticsEventKind {
+  PAGE_VIEW
+  SEARCH
+  CONTACT
+
+  @@map("analytics_event_kind")
+}
+
+/// Raw analytics events, kept for 7 days at most: the daily job rolls them up into AnalyticsDaily
+/// and BusinessStatsDaily, then deletes them.
+model AnalyticsEvent {
+  id          BigInt             @id @default(autoincrement())
+  /// Calendar day in Nigeria (Africa/Lagos).
+  day         DateTime           @db.Date
+  kind        AnalyticsEventKind
+  /// Daily visitor code: a hash of IP + browser with a random salt that changes every day (old
+  /// salts are deleted), so the same person can't be recognised across days or traced back.
+  visitor     String             @db.VarChar(32)
+  /// PAGE_VIEW: home, search, category, business, help, start or other.
+  pathType    String?            @map("path_type") @db.VarChar(16)
+  /// phone, tablet or desktop.
+  device      String             @db.VarChar(8)
+  /// First page of a visit only: direct, google, whatsapp, facebook, instagram, qr or other.
+  source      String?            @db.VarChar(16)
+  /// QR campaign name when source is qr.
+  campaign    String?            @db.VarChar(40)
+  /// Business page views and contact taps.
+  businessId  String?            @map("business_id") @db.Uuid
+  /// A repeat view of the same business by the same browser within 6 hours (not counted).
+  repeat      Boolean            @default(false)
+  contactType ContactType?       @map("contact_type")
+  /// SEARCH: the text with phone numbers and emails removed, at most 100 characters.
+  query       String?            @db.VarChar(100)
+  category    String?            @db.VarChar(80)
+  state       String?            @db.VarChar(80)
+  resultCount Int?               @map("result_count")
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([day, kind])
+  @@index([businessId, day])
+  @@map("analytics_events")
+}
+
+/// Site-wide daily totals (no personal data), e.g. metric "pageviews", key "search", value 120.
+/// Metric "rolled" marks a day whose raw events have been rolled up.
+model AnalyticsDaily {
+  day    DateTime @db.Date
+  metric String   @db.VarChar(32)
+  key    String   @default("") @db.VarChar(300)
+  value  Int
+
+  @@id([day, metric, key])
+  @@index([metric, day])
+  @@map("analytics_daily")
+}
+
+/// Per-business daily views and contact taps (shown to the owner and to admins only).
+model BusinessStatsDaily {
+  day        DateTime @db.Date
+  businessId String   @map("business_id") @db.Uuid
+  views      Int      @default(0)
+  whatsapp   Int      @default(0)
+  calls      Int      @default(0)
+  emails     Int      @default(0)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, day])
+  @@index([day])
+  @@map("business_stats_daily")
+}
+
+/// Today's random salt for visitor codes. One row per day; older rows are deleted.
+model AnalyticsSalt {
+  day  DateTime @id @db.Date
+  salt String   @db.VarChar(64)
+
+  @@map("analytics_salts")
 }

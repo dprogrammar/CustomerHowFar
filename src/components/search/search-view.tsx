@@ -16,6 +16,7 @@ import { BusinessCard } from "@/components/business/business-card";
 import { NotLiveNotice } from "@/components/service-areas/not-live-notice";
 import { buttonVariants } from "@/components/ui/button";
 import { DesktopFilters, MobileFilters } from "./search-filters";
+import { SearchTracker } from "./search-tracker";
 
 const SORT_LABELS: Record<SearchSort, string> = {
   best: "Best match",
@@ -134,6 +135,14 @@ export async function SearchView({
 
       <div className="min-w-0">
         {heading}
+        {mode.kind === "search" && page === 1 && (values.q || values.category || values.state) && (
+          <SearchTracker
+            q={values.q ?? ""}
+            category={values.category ?? null}
+            state={values.state ?? null}
+            count={result.total}
+          />
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="lg:hidden">

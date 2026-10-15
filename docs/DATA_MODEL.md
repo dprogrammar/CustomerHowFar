@@ -193,6 +193,28 @@ policies, so the public Supabase Data API cannot read or write anything.
   Only aggregate counts are kept: scans, sign-ups and new listings. A first-party cookie
   (`chf_qr`, campaign name only, 30 days) credits a later sign-up or listing to the campaign.
 
+### Analytics (first-party, anonymous)
+
+Code in `src/lib/analytics`; beacons go to `/api/track` after the page has loaded.
+
+- **`AnalyticsEvent`** (raw, at most 7 days): page views (page _type_ only: home, search,
+  category, business, help, start, other), searches (text with phone numbers and emails
+  removed, max 100 characters, filters, result count) and WhatsApp/call/email taps. Each has a
+  device type, and the first page of a visit has a source category (direct, google, whatsapp,
+  facebook, instagram, qr + campaign, other). No IPs, user agents, URLs, referrers, cookies or
+  account ids.
+- **Visitors** are a daily code: HMAC(IP + user agent) with a random salt in `AnalyticsSalt`
+  that changes every Nigerian day; earlier salts are deleted. Visitors are unique per day only.
+- Not counted: bots, admins, and owners viewing or tapping their own listings.
+- The daily job rolls up each finished day into **`AnalyticsDaily`** (day, metric, key, value)
+  and **`BusinessStatsDaily`** (views and taps per business), marks it `rolled`, then deletes raw
+  events older than 7 days. Today's figures are computed live from raw events with the same SQL
+  (`src/lib/analytics/rollup.ts`).
+- A visitor's source for the day is credited with their searches, business views and contacts
+  that day; this is how QR campaigns get their numbers (`/admin/analytics`, `/admin/qr-codes`).
+- Owners see their own businesses' stats on `/dashboard`, plus a Monday summary (the
+  `WEEKLY_STATS` notification category). View counts are never shown publicly.
+
 ### Search
 
 - `businesses.search_text` (name, category, tagline, services, lowercased) and

@@ -13,6 +13,7 @@ import {
   Store,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { getOwnerStats, type OwnerBusinessStats } from "@/lib/analytics/queries";
 import { getOwnerDashboard } from "@/lib/business/queries";
 import {
   MAX_BUSINESSES_PER_USER,
@@ -23,6 +24,7 @@ import { getIdentityState } from "@/lib/identity/server";
 import { formatKobo } from "@/lib/payments/methods";
 import { DeleteBusinessButton } from "@/components/business/delete-business-button";
 import { StatusBadge } from "@/components/business/status-badge";
+import { OwnerStats } from "@/components/analytics/owner-stats";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -89,7 +91,7 @@ function PaymentSummary({ payment }: { payment: NonNullable<DashboardBusiness["l
   );
 }
 
-function BusinessCardRow({ b }: { b: DashboardBusiness }) {
+function BusinessCardRow({ b, stats }: { b: DashboardBusiness; stats?: OwnerBusinessStats }) {
   const image = b.coverPublicId ?? b.photos[0]?.publicId ?? b.logoPublicId;
   const action = primaryAction(b);
   const editable = b.status !== "SUSPENDED";
@@ -161,6 +163,10 @@ function BusinessCardRow({ b }: { b: DashboardBusiness }) {
             </p>
           )}
           {b.latestPayment && <PaymentSummary payment={b.latestPayment} />}
+          {/* Live listings (and any that had visitors this month) show their private stats. */}
+          {(b.status === "APPROVED" || stats) && (
+            <OwnerStats businessId={b.id} businessName={b.name} stats={stats} />
+          )}
 
           <div className="mt-4 flex flex-wrap gap-2">
             {action && (
@@ -265,9 +271,10 @@ function IdentityBanner({
 
 async function DashboardContent() {
   const user = await requireUser("/dashboard");
-  const [businesses, identity] = await Promise.all([
+  const [businesses, identity, stats] = await Promise.all([
     getOwnerDashboard(user.id),
     getIdentityState(user.id),
+    getOwnerStats(user.id),
   ]);
   const atLimit = businesses.length >= MAX_BUSINESSES_PER_USER;
 
@@ -310,7 +317,7 @@ async function DashboardContent() {
       ) : (
         <ul className="mt-6 space-y-4">
           {businesses.map((b) => (
-            <BusinessCardRow key={b.id} b={b} />
+            <BusinessCardRow key={b.id} b={b} stats={stats.get(b.id)} />
           ))}
         </ul>
       )}

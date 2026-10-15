@@ -18,6 +18,8 @@ import {
   UserX,
   type LucideIcon,
 } from "lucide-react";
+import { getAnalyticsSummary } from "@/lib/analytics/queries";
+import { percentChange } from "@/lib/analytics/rules";
 import { getAdminOverview } from "@/lib/admin/queries";
 import { countTransfersToConfirm } from "@/lib/payments/queries";
 import { getReportCounts } from "@/lib/admin/report-queries";
@@ -148,6 +150,53 @@ async function Overview() {
   );
 }
 
+/** Last 7 days at a glance, linking to the full analytics page. */
+async function AnalyticsSummary() {
+  await requireAdmin();
+  const { current, previous } = await getAnalyticsSummary();
+  const items = [
+    { label: "Visitors", key: "visitors" },
+    { label: "Page views", key: "pageViews" },
+    { label: "Searches", key: "searches" },
+    { label: "Contacts", key: "contacts" },
+  ] as const;
+  return (
+    <section
+      aria-labelledby="analytics-summary-title"
+      className="mt-6 rounded-xl border border-border bg-white p-4 shadow-card"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="analytics-summary-title" className="text-base font-semibold text-gray-900">
+          Last 7 days
+        </h2>
+        <Link
+          href="/admin/analytics?range=7"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 underline"
+        >
+          Full analytics
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </Link>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {items.map(({ label, key }) => {
+          const pct = percentChange(current[key], previous[key]);
+          return (
+            <div key={key} className="rounded-lg bg-muted p-3">
+              <dt className="text-sm text-gray-700">{label}</dt>
+              <dd className="mt-0.5 text-2xl font-bold text-gray-900 tabular-nums">
+                {current[key].toLocaleString("en-NG")}
+              </dd>
+              <dd className="text-xs text-gray-700">
+                {pct === null ? "New" : `${pct > 0 ? "+" : ""}${pct}%`} vs the 7 days before
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </section>
+  );
+}
+
 export default function AdminOverviewPage() {
   return (
     <>
@@ -156,6 +205,13 @@ export default function AdminOverviewPage() {
         fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" aria-hidden="true" />}
       >
         <Overview />
+      </Suspense>
+      <Suspense
+        fallback={
+          <div className="mt-6 h-36 animate-pulse rounded-xl bg-muted" aria-hidden="true" />
+        }
+      >
+        <AnalyticsSummary />
       </Suspense>
     </>
   );

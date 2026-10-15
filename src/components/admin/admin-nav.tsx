@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Banknote,
+  ChartLine,
   ClipboardList,
   Flag,
   IdCard,
@@ -26,6 +27,12 @@ const ITEMS: {
   match: (p: string, tab: string | null) => boolean;
 }[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard, match: (p) => p === "/admin" },
+  {
+    label: "Analytics",
+    href: "/admin/analytics",
+    icon: ChartLine,
+    match: (p) => p.startsWith("/admin/analytics"),
+  },
   {
     label: "Review queue",
     href: "/admin/listings?tab=review",

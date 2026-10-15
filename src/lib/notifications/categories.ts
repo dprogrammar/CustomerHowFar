@@ -2,13 +2,15 @@
 // category on /account/notifications; in-app notifications (the bell) are always on.
 
 export type NotificationCategoryKey =
-  "LISTING" | "PAYMENT" | "REVIEW" | "RATING_REMINDER" | "STATE_LAUNCH" | "ADMIN";
+  "LISTING" | "PAYMENT" | "REVIEW" | "RATING_REMINDER" | "STATE_LAUNCH" | "ADMIN" | "WEEKLY_STATS";
 
 export const NOTIFICATION_CATEGORIES: {
   key: NotificationCategoryKey;
   label: string;
   description: string;
   adminOnly?: boolean;
+  /** Shown only to people who have listed a business. */
+  ownerOnly?: boolean;
 }[] = [
   {
     key: "LISTING",
@@ -29,6 +31,12 @@ export const NOTIFICATION_CATEGORIES: {
     key: "RATING_REMINDER",
     label: "Rating reminders",
     description: "A reminder to rate a business a few days after you contacted it.",
+  },
+  {
+    key: "WEEKLY_STATS",
+    label: "Weekly listing stats",
+    description: "Every Monday: how many people viewed and contacted your business last week.",
+    ownerOnly: true,
   },
   {
     key: "STATE_LAUNCH",

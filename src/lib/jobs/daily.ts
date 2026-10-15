@@ -1,5 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { rollUpAnalytics } from "@/lib/analytics/rollup";
+import { sendWeeklyOwnerStats } from "@/lib/analytics/weekly";
 import { pruneUnansweredQuestions } from "@/lib/assistant/unanswered";
 import { pruneNotifications, sendRatingReminders } from "@/lib/notifications/jobs";
 import { runIdentityRetention } from "@/lib/identity/server";
@@ -30,6 +32,10 @@ export async function runDailyJob() {
     const unansweredPruned = await pruneUnansweredQuestions();
     const notificationsPruned = await pruneNotifications();
     const ratingReminders = await sendRatingReminders();
+    // Roll up yesterday (and any missed days), delete raw events older than 7 days, then the
+    // Monday owner summary (which reads the rolled-up days).
+    const analytics = await rollUpAnalytics();
+    const weeklyStats = await sendWeeklyOwnerStats();
     const result = {
       identity,
       files,
@@ -38,6 +44,8 @@ export async function runDailyJob() {
       unansweredPruned,
       notificationsPruned,
       ratingReminders,
+      analytics,
+      weeklyStats,
     };
     await prisma.jobRun.update({
       where: { name: DAILY_JOB },

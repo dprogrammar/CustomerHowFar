@@ -669,3 +669,28 @@ export function ratingReminderEmail(input: {
       textFooter(),
   };
 }
+
+export function weeklyStatsEmail(input: {
+  ownerName: string;
+  businessName: string;
+  message: string;
+  dashboardUrl: string;
+  settingsUrl: string;
+}): RenderedEmail {
+  const first = input.ownerName.split(" ")[0] || "there";
+  return {
+    subject: `Your week on CustomerHowFar: ${input.businessName}`,
+    html: layout({
+      preheader: input.message,
+      heading: `Your week: ${input.businessName}`,
+      body:
+        paragraph(`Hi ${escapeHtml(first)},`) +
+        paragraph(escapeHtml(input.message)) +
+        button("See your stats", input.dashboardUrl) +
+        settingsNote(input.settingsUrl),
+    }),
+    text:
+      `Hi ${first},\n\n${input.message}\n\nSee your stats: ${input.dashboardUrl}\n\nNotification settings: ${input.settingsUrl}` +
+      textFooter(),
+  };
+}

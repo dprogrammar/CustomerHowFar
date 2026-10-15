@@ -58,6 +58,10 @@ src/
 - **Orphaned uploads**: files in `customerhowfar/{users,proofs,identity}/` that no record
   references and that are older than 24 hours are deleted in small batches. Dry run:
   `GET /api/cron/daily?task=orphans&dryRun=1` with the cron secret.
+- **Analytics** (`src/lib/analytics`, admin page `/admin/analytics`): first-party and
+  anonymous, no third-party services and no extra cookies. Visitors are counted with a
+  daily-rotating salted hash; raw events are rolled up by the daily job and deleted after 7
+  days. Owners see their own stats on `/dashboard`. Details in `docs/DATA_MODEL.md`.
 - **Rate limits**: one database-backed limiter (`src/lib/rate-limit.ts`, all limits in one
   table). IPs and emails are stored only as keyed hashes.
 - **Security headers**: set in `next.config.ts` (static CSP without nonces so pages stay

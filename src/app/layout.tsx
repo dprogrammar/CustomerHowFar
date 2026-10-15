@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { preconnect } from "react-dom";
 import { ChatLauncher } from "@/components/assistant/chat-launcher";
 import { BottomNav, BottomNavView } from "@/components/layout/bottom-nav";
+import { PageTracker } from "@/components/layout/page-tracker";
 import { PwaSupport } from "@/components/layout/pwa";
 import { APP_INSTALL_ENABLED } from "@/config/pwa";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -77,6 +78,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ChatLauncher />
         </Suspense>
         <PwaSupport />
+        {/* Anonymous page-view count, sent after load (see src/lib/analytics). */}
+        <Suspense fallback={null}>
+          <PageTracker />
+        </Suspense>
       </body>
     </html>
   );
