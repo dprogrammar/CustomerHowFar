@@ -1,8 +1,10 @@
-import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
+import { loadEnv } from "./scripts/env-guard.mjs";
 
-// Prisma does not load env files itself. Mirror Next.js: .env.local wins over .env.
-config({ path: [".env.local", ".env"], quiet: true });
+// Prisma does not load env files itself. Locally: .env.local (the DEV project); refuses the
+// production database unless ALLOW_PRODUCTION=yes (scripts/env-guard.mjs). On Vercel the
+// environment comes from the project settings: production migrations run during the build.
+if (!process.env.VERCEL) loadEnv({ script: "prisma" });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

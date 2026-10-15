@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { MAX_SUBMISSIONS_PER_DAY } from "./rules";
 import { deleteIdentityImages } from "./server";
+import { UPLOAD_FOLDER } from "@/config/uploads";
 
 // Owner-side identity check. The browser only ever sends upload IDs from the user's own private
 // folder; every file is checked and renamed on the server before it's recorded. ID numbers are
@@ -46,7 +47,7 @@ const submitSchema = z.object({
 type SubmitInput = z.input<typeof submitSchema>;
 
 async function discard(userId: string, ids: (string | undefined)[]) {
-  const own = `customerhowfar/identity/${userId}/`;
+  const own = `${UPLOAD_FOLDER}/identity/${userId}/`;
   await Promise.all(
     ids.filter((id): id is string => !!id && id.startsWith(own)).map((id) => deletePrivateFile(id)),
   );

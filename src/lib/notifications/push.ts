@@ -24,12 +24,20 @@ export function isAllowedPushEndpoint(endpoint: string) {
   }
 }
 
+/**
+ * PUSH_NOTIFICATIONS=off (development) switches push off completely: no offer, no new devices,
+ * nothing sent. Tests and dev data can then never reach anyone's phone.
+ */
+export const isPushDisabled = () => process.env.PUSH_NOTIFICATIONS === "off";
+
 export function pushPublicKey() {
+  if (isPushDisabled()) return null;
   return process.env.VAPID_PUBLIC_KEY || null;
 }
 
 let configured: boolean | null = null;
 function configure() {
+  if (isPushDisabled()) return false;
   if (configured !== null) return configured;
   const pub = process.env.VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;

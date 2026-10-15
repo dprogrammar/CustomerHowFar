@@ -1,6 +1,7 @@
 import "server-only";
 import { getCloudinary } from "@/lib/cloudinary";
 import { prisma } from "@/lib/prisma";
+import { UPLOAD_FOLDER } from "@/config/uploads";
 
 // Deletes Cloudinary files in our upload folders that no database record points to (abandoned
 // wizard uploads, replaced photos whose delete failed, uploads never submitted). Safety rules:
@@ -11,9 +12,9 @@ import { prisma } from "@/lib/prisma";
 // Logs counts only (file ids contain user ids).
 
 const FOLDERS = [
-  { prefix: "customerhowfar/users/", type: "upload" },
-  { prefix: "customerhowfar/proofs/", type: "authenticated" },
-  { prefix: "customerhowfar/identity/", type: "authenticated" },
+  { prefix: `${UPLOAD_FOLDER}/users/`, type: "upload" },
+  { prefix: `${UPLOAD_FOLDER}/proofs/`, type: "authenticated" },
+  { prefix: `${UPLOAD_FOLDER}/identity/`, type: "authenticated" },
 ] as const;
 
 const PAGE_SIZE = 100;

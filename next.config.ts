@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { PRODUCTION_PROJECT_REF, productionVars } from "./scripts/env-guard.mjs";
+
+// Local safety guard: `next dev`, `next build` and `next start` on a developer machine refuse to
+// run against the PRODUCTION Supabase project (Next.js would otherwise happily load production
+// values from an env file). Vercel builds are exempt; ALLOW_PRODUCTION=yes overrides on purpose.
+if (!process.env.VERCEL && process.env.ALLOW_PRODUCTION !== "yes" && productionVars().length) {
+  throw new Error(
+    `Refusing to run Next.js locally against the PRODUCTION Supabase project (${PRODUCTION_PROJECT_REF}): ` +
+      `${productionVars().join(", ")} point there. Use the dev project in .env.local ` +
+      "(see README, Environments).",
+  );
+}
 
 const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const isDev = process.env.NODE_ENV === "development";

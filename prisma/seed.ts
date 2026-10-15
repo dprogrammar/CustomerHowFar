@@ -1,15 +1,16 @@
 // Idempotent seed: safe to run any number of times (`npm run db:seed`).
 // Seeds app settings, categories, the 36 states + FCT and all 774 LGAs, then verifies counts.
-import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { CATEGORIES } from "../src/config/categories";
 import { isCategoryIconName } from "../src/config/category-icons";
 import { NIGERIAN_STATES } from "../src/config/states";
 import { slugify } from "../src/lib/slug";
+import { loadEnv } from "../scripts/env-guard.mjs";
 import { EXPECTED_LGA_COUNTS, EXPECTED_TOTAL_LGAS, NIGERIA_LGAS } from "./data/nigeria-lgas";
 
-config({ path: [".env.local", ".env"], quiet: true });
+// Refuses the production database unless ALLOW_PRODUCTION=yes (see scripts/env-guard.mjs).
+loadEnv({ script: "db:seed" });
 
 const connectionString = process.env.DIRECT_URL;
 if (!connectionString) {
@@ -136,6 +137,13 @@ async function seedStatesAndLgas() {
     })),
   );
   const { count: inserted } = await prisma.lga.createMany({ data: lgaRows, skipDuplicates: true });
+
+  // A fresh database (no state live yet) launches in Lagos. Once any state is live, which
+  // states are live is only ever changed in /admin/service-areas.
+  if ((await prisma.state.count({ where: { isActive: true } })) === 0) {
+    await prisma.state.update({ where: { slug: "lagos" }, data: { isActive: true } });
+    console.log("No state was live: Lagos is now live.");
+  }
 
   const existingLgas = await prisma.lga.findMany({
     select: { id: true, stateId: true, slug: true, name: true },

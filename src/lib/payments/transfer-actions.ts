@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { getPaymentConfig, newPaymentReference } from "./config";
 import { PAYMENT_METHODS } from "./methods";
+import { UPLOAD_FOLDER } from "@/config/uploads";
 
 // Owner-side bank transfer flow. Every action re-checks the session, ownership, the business
 // status and the payment settings on the server.
@@ -224,7 +225,7 @@ export async function submitTransferProofAction(
 
 async function deleteOwnProof(publicId: string) {
   const session = await getSessionUser();
-  if (session && publicId.startsWith(`customerhowfar/proofs/${session.id}/`))
+  if (session && publicId.startsWith(`${UPLOAD_FOLDER}/proofs/${session.id}/`))
     await deleteProof(publicId);
 }
 

@@ -16,7 +16,10 @@ CustomerHowFar is a Nigerian marketplace connecting customers with trusted artis
 git clone https://github.com/dprogrammar/CustomerHowFar.git
 cd CustomerHowFar
 npm install
-cp .env.example .env.local   # then fill in the values
+cp .env.example .env.local   # then fill in the DEV project's values (see Environments)
+npx prisma migrate deploy    # set up the dev database
+npm run db:seed
+npm run dev:admin -- you@example.com   # a dev admin account; asks for its password
 npm run dev
 ```
 
@@ -24,15 +27,49 @@ Open http://localhost:3000 in your browser.
 
 ## Scripts
 
-| Command                | Description                                      |
-| ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Start the development server                     |
-| `npm run build`        | Create a production build                        |
-| `npm run start`        | Run the production build                         |
-| `npm run lint`         | Lint the code with ESLint                        |
-| `npm run format`       | Format the code with Prettier                    |
-| `npm run format:check` | Check formatting without writing                 |
-| `npm run test:start`   | Check that /start (the QR code page) still works |
+| Command                | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `npm run dev`          | Start the development server                      |
+| `npm run build`        | Build (on Vercel production: migrate, then build) |
+| `npm run start`        | Run the production build                          |
+| `npm run lint`         | Lint the code with ESLint                         |
+| `npm run format`       | Format the code with Prettier                     |
+| `npm run format:check` | Check formatting without writing                  |
+| `npm run test:start`   | Check that /start (the QR code page) still works  |
+| `npm run db:seed`      | Seed categories, states/LGAs and settings         |
+| `npm run dev:admin`    | Create a dev admin account and set its password   |
+| `npm run make-admin`   | Promote a signed-up user to admin                 |
+
+## Environments
+
+There are two Supabase projects. **Development and tests never use the production database.**
+
+|                    | Development                                | Production                                    |
+| ------------------ | ------------------------------------------ | --------------------------------------------- |
+| Supabase project   | `customerhowfar-dev`                       | the live project (ref `vzgbwqthcrctahysaoyf`) |
+| Settings live in   | `.env.local` (your machine)                | Vercel project settings                       |
+| Emails             | written to `EMAIL_TEST_OUTBOX`, never sent | sent by Brevo                                 |
+| Push notifications | off (`PUSH_NOTIFICATIONS=off`)             | on                                            |
+| Cloudinary folder  | `dev/customerhowfar` (`CLOUDINARY_FOLDER`) | `customerhowfar`                              |
+
+- **`.env.prod.local`** (git-ignored, on your machine only) holds the production values. It is
+  only for deliberate one-off production tasks, never for development or tests. Never name it
+  `.env.production.local` (or create `.env.production`): Next.js loads those automatically for
+  every local `next build`/`next start`, which would connect your local app to production. The
+  guard refuses to run while either exists.
+- **Safety guard** (`scripts/env-guard.mjs`): every test suite, seed, clean-up and admin script,
+  and the Prisma CLI, refuses to run if the database or Supabase URL points at the production
+  project, and so do `next dev`, `next build` and `next start` on your machine. For a deliberate
+  one-off production task, prefix the command with
+  `ALLOW_PRODUCTION=yes`: it then loads `.env.prod.local` for that run only, e.g.
+  `ALLOW_PRODUCTION=yes npm run make-admin -- someone@example.com`. To see which project you're
+  pointed at: `node scripts/env-guard.mjs`.
+- **Migrations**: create them in development (`npx prisma migrate dev`, against the dev project).
+  A production deploy on Vercel applies pending migrations (`prisma migrate deploy` with the
+  production `DIRECT_URL`) before building. If a migration fails, the deploy stops and the current
+  version keeps running. Keep migrations backward compatible (add, don't rename or drop in the
+  same deploy), because the old code keeps running until the new build is live. Preview deploys
+  never run migrations.
 
 ## Project structure
 

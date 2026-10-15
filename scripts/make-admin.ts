@@ -1,12 +1,13 @@
 // Usage: npm run make-admin -- someone@example.com
 // Promotes an existing user's profile to ADMIN. The user must have signed up and logged in once.
 import { createClient } from "@supabase/supabase-js";
-import { config } from "dotenv";
 import { z } from "zod";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { loadEnv } from "./env-guard.mjs";
 
-config({ path: [".env.local", ".env"], quiet: true });
+// Refuses the production project unless ALLOW_PRODUCTION=yes (see scripts/env-guard.mjs).
+loadEnv({ script: "make-admin" });
 
 const parsed = z.email().safeParse(process.argv[2]?.trim().toLowerCase());
 if (!parsed.success) {

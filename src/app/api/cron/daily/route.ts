@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { UPLOAD_FOLDER } from "@/config/uploads";
 import { runDailyJob } from "@/lib/jobs/daily";
 import { cleanOrphanedUploads } from "@/lib/storage/orphans";
 
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
   try {
     if (params.get("task") === "orphans") {
       const prefix = params.get("prefix") ?? undefined;
-      if (prefix && !/^customerhowfar\/(users|proofs|identity)\/[\w-]+\/$/.test(prefix)) {
+      const folder = prefix?.match(/^(.+)\/(users|proofs|identity)\/[\w-]+\/$/)?.[1];
+      if (prefix && folder !== UPLOAD_FOLDER) {
         return Response.json(
           { ok: false, error: "bad prefix" },
           { status: 400, headers: NO_STORE },

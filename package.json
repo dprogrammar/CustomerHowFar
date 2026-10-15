@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
@@ -17,6 +17,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "make-admin": "tsx scripts/make-admin.ts",
+    "dev:admin": "tsx scripts/dev-admin.ts",
     "email:test": "tsx --conditions=react-server scripts/send-test-emails.ts",
     "test:start": "node --test tests/start-page.test.mjs"
   },

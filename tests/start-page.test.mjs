@@ -7,6 +7,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { loadEnv } from "../scripts/env-guard.mjs";
+
+// Refuses a production .env.local (see scripts/env-guard.mjs). Checking the live site by URL
+// (BASE_URL) is read-only and allowed.
+loadEnv({ script: "test:start" });
 
 const root = path.resolve(import.meta.dirname, "..");
 const baseUrl = (process.env.BASE_URL || "http://localhost:3000").replace(/\/+$/, "");

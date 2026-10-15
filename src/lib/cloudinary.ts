@@ -301,7 +301,14 @@ export const proofDownloadUrl = privateDownloadUrl;
 
 /** Deletes a private file. Best effort: logs (without the file id) and returns false on failure. */
 export async function deletePrivateFile(publicId: string | null | undefined): Promise<boolean> {
-  if (!publicId || !/^customerhowfar\/(proofs|identity)\//.test(publicId)) return false;
+  if (
+    !publicId ||
+    !(
+      publicId.startsWith(`${UPLOAD_FOLDER}/proofs/`) ||
+      publicId.startsWith(`${UPLOAD_FOLDER}/identity/`)
+    )
+  )
+    return false;
   try {
     const result = await getCloudinary().uploader.destroy(publicId, {
       resource_type: "image",

@@ -1,6 +1,7 @@
 import "server-only";
 import { deleteCloudinaryImage, deletePrivateFile } from "@/lib/cloudinary";
 import { prisma } from "@/lib/prisma";
+import { UPLOAD_FOLDER } from "@/config/uploads";
 
 // Deletes Cloudinary files AFTER the database change that stopped using them has committed.
 // Each file is tried a few times; anything still failing is queued and retried by the daily job.
@@ -25,7 +26,7 @@ async function deleteWithRetry(file: StoredFile) {
 /** Returns the number of files that couldn't be deleted now (they are queued). */
 export async function deleteStoredFiles(files: StoredFile[]) {
   // Only our own folder: anything else was never ours to delete.
-  const ours = files.filter((f) => f.publicId?.startsWith("customerhowfar/"));
+  const ours = files.filter((f) => f.publicId?.startsWith(`${UPLOAD_FOLDER}/`));
   const unique = [...new Map(ours.map((f) => [f.publicId, f])).values()];
   const failed: StoredFile[] = [];
   for (let i = 0; i < unique.length; i += 5) {

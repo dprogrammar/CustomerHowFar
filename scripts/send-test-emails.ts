@@ -1,9 +1,10 @@
 // Sends ONE sample of each email template to ADMIN_NOTIFY_EMAIL so you can see how they look.
 // Usage: npm run email:test
 // Uses sample data; touches no database rows.
-import { config } from "dotenv";
+import { loadEnv } from "./env-guard.mjs";
 
-config({ path: [".env.local", ".env"], quiet: true });
+// Refuses the production project unless ALLOW_PRODUCTION=yes (see scripts/env-guard.mjs).
+loadEnv({ script: "email:test" });
 
 async function main() {
   const { sendEmail } = await import("../src/lib/email/send");

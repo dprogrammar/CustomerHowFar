@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
-import { deviceLabel, isAllowedPushEndpoint, pushPublicKey } from "./push";
+import { deviceLabel, isAllowedPushEndpoint, isPushDisabled, pushPublicKey } from "./push";
 
 // Notification actions for the signed-in user only (the user id always comes from the session).
 
@@ -56,6 +56,7 @@ export async function savePushSubscriptionAction(
 ): Promise<NotificationActionResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: LOGIN };
+  if (isPushDisabled()) return { ok: false, error: "Push notifications are switched off here." };
   const parsed = subscriptionSchema.safeParse(input);
   if (!parsed.success || !isAllowedPushEndpoint(parsed.data.endpoint)) {
     return { ok: false, error: "This browser's push service isn't supported." };
