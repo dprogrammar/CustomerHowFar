@@ -7,33 +7,60 @@ import type { FormState } from "@/lib/auth/actions";
 import { submitBusinessAction } from "@/lib/business/actions";
 import type { IdentityState } from "@/lib/identity/rules";
 import { FormAlert, SubmitButton } from "@/components/auth/form-fields";
+import { IdStatusBadge } from "@/components/identity/id-status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const initialState: FormState = { status: "idle" };
 
-/** Shown on the Review step when the owner hasn't submitted an ID (or it was rejected). */
+/** The owner's ID check on the Review step, with the same status labels as everywhere else. */
 function IdentityNote({ state }: { state: IdentityState }) {
-  if (state === "APPROVED" || state === "PENDING") return null;
+  const needsAction = state === "NONE" || state === "REJECTED";
   return (
-    <div className="flex gap-3 rounded-xl bg-accent-50 p-4 text-sm text-accent-900 ring-1 ring-accent-200">
+    <div
+      className={
+        needsAction
+          ? "text-accent-950 flex gap-3 rounded-xl bg-accent-50 p-4 text-sm ring-1 ring-accent-200"
+          : "flex gap-3 rounded-xl bg-white p-4 text-sm text-gray-800 ring-1 ring-border"
+      }
+    >
       <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-      <p>
-        <strong className="font-semibold">
-          {state === "REJECTED"
-            ? "Please submit your ID again."
-            : "One more thing: verify your identity."}
-        </strong>{" "}
-        Our team can only approve your listing after checking a photo of your government ID and a
-        selfie. You can submit your listing now and{" "}
-        <Link
-          href="/account/verify-identity"
-          className="font-semibold underline underline-offset-2"
-        >
-          verify your identity
-        </Link>{" "}
-        straight after.
-      </p>
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-2 font-semibold text-gray-900">
+          Your ID check: <IdStatusBadge state={state} />
+        </p>
+        <p className="mt-1">
+          {state === "APPROVED" && "Your ID has been checked. Nothing else to do here."}
+          {state === "PENDING" &&
+            "Under review, no action needed. Our team will review it together with your listing."}
+          {state === "NONE" && (
+            <>
+              Your listing can only go live after our team has reviewed a photo of your government
+              ID and a selfie. You can send your listing now and{" "}
+              <Link
+                href="/account/verify-identity"
+                className="font-semibold underline underline-offset-2"
+              >
+                verify your identity
+              </Link>{" "}
+              straight after.
+            </>
+          )}
+          {state === "REJECTED" && (
+            <>
+              Our team couldn&apos;t accept your last ID. You can send your listing now, but it can
+              only go live after you{" "}
+              <Link
+                href="/account/verify-identity"
+                className="font-semibold underline underline-offset-2"
+              >
+                upload a new ID
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
@@ -48,7 +75,7 @@ export function SubmitListingForm({
   businessId: string;
   resubmit: boolean;
   disabled: boolean;
-  /** The owner's ID check; prompts before submitting if no ID has been submitted. */
+  /** The owner's ID check; asks before sending if no ID has been submitted. */
   idState?: IdentityState;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -114,22 +141,25 @@ export function SubmitListingForm({
           </Link>
           <SubmitButton
             pending={pending}
-            pendingText="Submitting..."
+            pendingText="Sending..."
             disabled={disabled || pending}
+            aria-describedby="send-note"
             className="min-w-0 flex-1 px-4 sm:w-auto sm:flex-none sm:px-8"
           >
             <Send aria-hidden="true" />
-            {resubmit ? "Resubmit" : "Submit"}
-            <span className="sr-only sm:not-sr-only"> for review</span>
+            {resubmit ? "Send for review again" : "Send for review"}
           </SubmitButton>
         </div>
+        <p id="send-note" className="text-sm text-gray-700">
+          Our team will review your listing and ID. We&apos;ll notify you when it&apos;s live.
+        </p>
       </form>
       <ConfirmDialog
         open={prompt}
         onClose={() => setPrompt(false)}
         title="You haven't verified your identity yet"
-        description="We can only approve your listing after our team has checked your ID and a selfie. You can submit now and verify straight after, or verify first."
-        confirmLabel="Submit anyway"
+        description="Your listing can only go live after our team has reviewed your ID and a selfie. You can send it for review now and verify straight after, or verify first."
+        confirmLabel="Send anyway"
         onConfirm={() => {
           confirmed.current = true;
           setPrompt(false);

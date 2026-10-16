@@ -910,7 +910,7 @@ try {
     t.includes("Changes requested") &&
       t.includes("Awaiting payment") &&
       t.includes("Awaiting confirmation") &&
-      t.includes("Being checked"),
+      t.includes("Under review"),
   );
   check(
     "next step with a link (Fix and resubmit)",

@@ -464,7 +464,7 @@ try {
       (await op.evaluate(
         () =>
           [...document.querySelectorAll("main button")].find((b) =>
-            b.textContent.includes("Submit"),
+            b.textContent.includes("Send for review"),
           )?.disabled,
       )) === true,
   );
@@ -473,7 +473,7 @@ try {
   await op.evaluate(() => document.querySelector('main input[name="acceptTerms"]').click());
   await op.evaluate(() =>
     [...document.querySelectorAll("main button")]
-      .find((b) => b.textContent.includes("Submit"))
+      .find((b) => b.textContent.includes("Send for review"))
       .click(),
   );
   await op
@@ -490,7 +490,7 @@ try {
     await op.evaluate(() => {
       document.querySelector('main input[name="acceptTerms"]').click();
       const b = [...document.querySelectorAll("main button")].find((x) =>
-        x.textContent.includes("Submit"),
+        x.textContent.includes("Send for review"),
       );
       b.disabled = false;
       b.click();
@@ -498,7 +498,7 @@ try {
     await sleep(500);
     await op.evaluate(() =>
       [...document.querySelectorAll("dialog[open] button")]
-        .find((b) => b.textContent.includes("Submit anyway"))
+        .find((b) => b.textContent.includes("Send anyway"))
         ?.click(),
     );
     return op

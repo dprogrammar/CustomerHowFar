@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   Banknote,
   CircleAlert,
-  CreditCard,
+  Clock3,
   Eye,
   IdCard,
   Pencil,
@@ -14,16 +14,16 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { getOwnerStats, type OwnerBusinessStats } from "@/lib/analytics/queries";
+import { ownerProgress } from "@/lib/business/progress";
 import { getOwnerDashboard } from "@/lib/business/queries";
-import {
-  MAX_BUSINESSES_PER_USER,
-  firstIncompleteStep,
-  type BusinessStatus,
-} from "@/lib/business/rules";
+import { MAX_BUSINESSES_PER_USER, firstIncompleteStep } from "@/lib/business/rules";
+import type { IdentityState } from "@/lib/identity/rules";
 import { getIdentityState } from "@/lib/identity/server";
 import { formatKobo } from "@/lib/payments/methods";
 import { DeleteBusinessButton } from "@/components/business/delete-business-button";
+import { ProgressTracker } from "@/components/business/progress-tracker";
 import { StatusBadge } from "@/components/business/status-badge";
+import { IdStatusBadge } from "@/components/identity/id-status-badge";
 import { OwnerStats } from "@/components/analytics/owner-stats";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { buttonVariants } from "@/components/ui/button";
@@ -35,26 +35,6 @@ export const metadata: Metadata = {
 };
 
 type DashboardBusiness = Awaited<ReturnType<typeof getOwnerDashboard>>[number];
-
-function primaryAction(
-  b: DashboardBusiness,
-): { label: string; href: string; icon: typeof Pencil } | null {
-  const status: BusinessStatus = b.status;
-  switch (status) {
-    case "DRAFT":
-      return {
-        label: "Continue setup",
-        href: `/business/${b.id}/edit?step=${firstIncompleteStep(b.completeness)}`,
-        icon: Pencil,
-      };
-    case "PENDING_PAYMENT":
-      return { label: "Pay", href: `/business/${b.id}/pay`, icon: CreditCard };
-    case "REJECTED":
-      return { label: "Fix and resubmit", href: `/business/${b.id}/edit?step=1`, icon: Pencil };
-    default:
-      return null;
-  }
-}
 
 /** Payment status and reference on the owner's card (with the reason if a proof was rejected). */
 function PaymentSummary({ payment }: { payment: NonNullable<DashboardBusiness["latestPayment"]> }) {
@@ -91,15 +71,27 @@ function PaymentSummary({ payment }: { payment: NonNullable<DashboardBusiness["l
   );
 }
 
-function BusinessCardRow({ b, stats }: { b: DashboardBusiness; stats?: OwnerBusinessStats }) {
+function BusinessCardRow({
+  b,
+  stats,
+  idState,
+}: {
+  b: DashboardBusiness;
+  stats?: OwnerBusinessStats;
+  idState: IdentityState;
+}) {
   const image = b.coverPublicId ?? b.photos[0]?.publicId ?? b.logoPublicId;
-  const action = primaryAction(b);
   const editable = b.status !== "SUSPENDED";
+  // Read from the server's data: the owner's ID check and this business's status.
+  const progress = ownerProgress({ idState, business: b });
   // Same URL for everyone; owners see a preview banner while the listing isn't live.
   const viewHref = `/business/${b.slug}`;
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-border bg-white shadow-card">
+    <li
+      id={`business-${b.id}`}
+      className="scroll-mt-24 overflow-hidden rounded-2xl border border-border bg-white shadow-card"
+    >
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/9] w-full shrink-0 bg-gradient-to-br from-brand-50 to-accent-50 sm:aspect-auto sm:w-48">
           {image ? (
@@ -157,11 +149,7 @@ function BusinessCardRow({ b, stats }: { b: DashboardBusiness; stats?: OwnerBusi
               </p>
             </div>
           )}
-          {b.status === "PENDING_REVIEW" && (
-            <p className="mt-3 text-sm text-gray-700">
-              Our team is reviewing your listing. We&apos;ll email you.
-            </p>
-          )}
+          <ProgressTracker progress={progress} title={`Progress for ${b.name}`} className="mt-3" />
           {b.latestPayment && <PaymentSummary payment={b.latestPayment} />}
           {/* Live listings (and any that had visitors this month) show their private stats. */}
           {(b.status === "APPROVED" || stats) && (
@@ -169,22 +157,13 @@ function BusinessCardRow({ b, stats }: { b: DashboardBusiness; stats?: OwnerBusi
           )}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {action && (
+            {editable && (
               <Link
-                href={action.href}
-                className={buttonVariants({
-                  size: "md",
-                  variant: b.status === "PENDING_PAYMENT" ? "accent" : "primary",
-                })}
-              >
-                <action.icon aria-hidden="true" />
-                {action.label}
-                <span className="sr-only">: {b.name}</span>
-              </Link>
-            )}
-            {editable && b.status !== "DRAFT" && b.status !== "REJECTED" && (
-              <Link
-                href={`/business/${b.id}/edit?step=1`}
+                href={
+                  b.status === "DRAFT"
+                    ? `/business/${b.id}/edit?step=${firstIncompleteStep(b.completeness)}`
+                    : `/business/${b.id}/edit?step=1`
+                }
                 className={buttonVariants({ variant: "outline" })}
               >
                 <Pencil aria-hidden="true" />
@@ -212,60 +191,88 @@ function BusinessCardRow({ b, stats }: { b: DashboardBusiness; stats?: OwnerBusi
   );
 }
 
-/** Asks owners to complete their ID check until it's accepted (listings need it to be approved). */
-function IdentityBanner({
+const dateFmt = new Intl.DateTimeFormat("en-NG", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "Africa/Lagos",
+});
+
+/** The owner's ID check (one per owner, for all their businesses), always with the same status labels. */
+function IdentityNotice({
   state,
   reason,
+  submittedAt,
 }: {
-  state: "NONE" | "PENDING" | "REJECTED";
+  state: IdentityState;
   reason: string | null;
+  submittedAt: Date | null;
 }) {
-  if (state === "PENDING") {
+  if (state === "REJECTED") {
+    return (
+      <div
+        role="alert"
+        className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-950 ring-1 ring-red-200"
+      >
+        <p className="flex flex-wrap items-center gap-2 font-semibold">
+          <CircleAlert aria-hidden="true" className="size-5 shrink-0" />
+          ID check: <IdStatusBadge state={state} />
+        </p>
+        <p className="mt-2">
+          Our team couldn&apos;t accept your ID{reason ? " for this reason:" : "."}
+        </p>
+        {reason && <p className="mt-1 font-medium whitespace-pre-line">{reason}</p>}
+        <p className="mt-2">
+          Your listings can only go live after your ID is accepted. Please upload a new one.
+        </p>
+        <Link
+          href="/account/verify-identity"
+          className={buttonVariants({ variant: "primary", className: "mt-3 w-full sm:w-auto" })}
+        >
+          <IdCard aria-hidden="true" />
+          Upload a new ID
+        </Link>
+      </div>
+    );
+  }
+  if (state === "NONE") {
     return (
       <div
         role="note"
-        className="mt-6 flex gap-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-950 ring-1 ring-blue-200"
+        className="text-accent-950 mt-6 rounded-xl bg-accent-50 p-4 text-sm ring-1 ring-accent-200"
       >
-        <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-        <p>
-          <strong className="font-semibold">Your ID is being checked.</strong> We&apos;ll email you
-          when it&apos;s done, usually within 1 to 2 working days.{" "}
-          <Link
-            href="/account/verify-identity"
-            className="font-medium underline underline-offset-2"
-          >
-            View status
-          </Link>
+        <p className="flex flex-wrap items-center gap-2 font-semibold">
+          <IdCard aria-hidden="true" className="size-5 shrink-0" />
+          ID check: <IdStatusBadge state={state} />
         </p>
+        <p className="mt-2">
+          Share a photo of your government ID and a selfie holding it. Your listings can only go
+          live after our team has reviewed your ID. It takes about 2 minutes.
+        </p>
+        <Link
+          href="/account/verify-identity"
+          className={buttonVariants({ variant: "primary", className: "mt-3 w-full sm:w-auto" })}
+        >
+          Verify your identity
+        </Link>
       </div>
     );
   }
   return (
-    <div
-      role="note"
-      className="mt-6 rounded-xl bg-accent-50 p-4 text-sm text-accent-900 ring-1 ring-accent-200"
-    >
-      <p className="flex gap-3">
-        <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-        <span>
-          <strong className="block font-semibold">
-            {state === "REJECTED" ? "Please submit your ID again" : "Verify your identity"}
-          </strong>
-          {state === "REJECTED"
-            ? `We couldn't accept your ID check${reason ? `: ${reason}` : "."}`
-            : "Share a photo of your government ID and a selfie holding it. New listings are approved only after our team has checked your ID. It takes about 2 minutes."}
-        </span>
-      </p>
-      <Link
-        href="/account/verify-identity"
-        className={buttonVariants({
-          variant: "primary",
-          className: "mt-3 w-full sm:ml-8 sm:w-auto",
-        })}
-      >
-        {state === "REJECTED" ? "Submit again" : "Verify your identity"}
-      </Link>
-    </div>
+    <p className="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 text-sm text-gray-800 ring-1 ring-border">
+      {state === "PENDING" ? (
+        <Clock3 aria-hidden="true" className="size-4 shrink-0 text-blue-700" />
+      ) : (
+        <IdCard aria-hidden="true" className="size-4 shrink-0 text-brand-700" />
+      )}
+      <span className="font-semibold text-gray-900">ID check:</span>
+      <IdStatusBadge state={state} />
+      <span>
+        {state === "PENDING"
+          ? `No action needed${submittedAt ? `. Sent on ${dateFmt.format(submittedAt)}` : ""}.`
+          : "Your ID has been checked."}
+      </span>
+    </p>
   );
 }
 
@@ -297,8 +304,12 @@ async function DashboardContent() {
         )}
       </div>
 
-      {businesses.length > 0 && identity.state !== "APPROVED" && (
-        <IdentityBanner state={identity.state} reason={identity.latest?.rejectionReason ?? null} />
+      {businesses.length > 0 && (
+        <IdentityNotice
+          state={identity.state}
+          reason={identity.latest?.rejectionReason ?? null}
+          submittedAt={identity.latest?.submittedAt ?? null}
+        />
       )}
 
       {businesses.length === 0 ? (
@@ -317,7 +328,7 @@ async function DashboardContent() {
       ) : (
         <ul className="mt-6 space-y-4">
           {businesses.map((b) => (
-            <BusinessCardRow key={b.id} b={b} stats={stats.get(b.id)} />
+            <BusinessCardRow key={b.id} b={b} stats={stats.get(b.id)} idState={identity.state} />
           ))}
         </ul>
       )}

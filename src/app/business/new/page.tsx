@@ -2,12 +2,15 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/session";
+import { ownerProgress } from "@/lib/business/progress";
 import { countOwnedBusinesses } from "@/lib/business/queries";
+import { getIdentityState } from "@/lib/identity/server";
 import { MAX_BUSINESSES_PER_USER } from "@/lib/business/rules";
 import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { getActiveCategories } from "@/lib/data/catalog";
 import { liveStatesText } from "@/components/service-areas/live-states";
 import { FormAlert } from "@/components/auth/form-fields";
+import { ProgressTracker } from "@/components/business/progress-tracker";
 import { StepBasics } from "@/components/business/wizard/step-basics";
 import { WizardFrame, WizardSkeleton } from "@/components/business/wizard/wizard-frame";
 import { WizardProgress } from "@/components/business/wizard/wizard-progress";
@@ -20,11 +23,12 @@ export const metadata: Metadata = {
 
 async function NewBusinessContent() {
   const user = await requireUser("/business/new");
-  const [count, categories, live, feeOn] = await Promise.all([
+  const [count, categories, live, feeOn, identity] = await Promise.all([
     countOwnedBusinesses(user.id),
     getActiveCategories(),
     liveStatesText(),
     isListingFeeOn(),
+    getIdentityState(user.id),
   ]);
 
   if (count >= MAX_BUSINESSES_PER_USER) {
@@ -65,6 +69,12 @@ async function NewBusinessContent() {
           </>
         )}
       </p>
+      {/* The owner is starting their listing here, so no button: the steps below come first. */}
+      <ProgressTracker
+        progress={ownerProgress({ idState: identity.state, business: null })}
+        showAction={false}
+        className="mb-6"
+      />
       <WizardProgress current={1} completed={{}} />
       <StepBasics businessId={null} categories={categories} />
     </WizardFrame>

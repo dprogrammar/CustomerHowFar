@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   CircleAlert,
   CircleCheck,
   Clock3,
@@ -13,7 +14,9 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { ID_TYPE_LABELS, MAX_SUBMISSIONS_PER_DAY, RETENTION_DAYS } from "@/lib/identity/rules";
+import { getContinueListingHref } from "@/lib/business/queries";
 import { countRecentSubmissions, getIdentityState } from "@/lib/identity/server";
+import { IdStatusBadge } from "@/components/identity/id-status-badge";
 import { IdentityForm } from "@/components/identity/identity-form";
 import { WithdrawIdentityButton } from "@/components/identity/withdraw-button";
 import { FormAlert } from "@/components/auth/form-fields";
@@ -73,29 +76,42 @@ function Intro() {
   );
 }
 
+/** The page's state, read on the server: an owner never sees an empty form once they've sent an ID. */
 async function Status() {
   const user = await requireUser("/account/verify-identity");
-  const { state, latest } = await getIdentityState(user.id);
-  const recent = await countRecentSubmissions(user.id);
+  const [{ state, latest }, recent, continueHref] = await Promise.all([
+    getIdentityState(user.id),
+    countRecentSubmissions(user.id),
+    getContinueListingHref(user.id),
+  ]);
   const remaining = Math.max(0, MAX_SUBMISSIONS_PER_DAY - recent);
+  const continueButton = (
+    <Link
+      href={continueHref}
+      className={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })}
+    >
+      Continue to my listing
+      <ArrowRight aria-hidden="true" />
+    </Link>
+  );
 
   if (state === "APPROVED") {
     return (
       <Card>
         <CardContent className="flex gap-3 p-5">
           <CircleCheck aria-hidden="true" className="size-6 shrink-0 text-brand-600" />
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Status: Accepted</h2>
-            <p className="mt-1 text-sm text-gray-700">
-              Thank you. Our team has checked your ID. Your approved listings show an &ldquo;ID
-              submitted&rdquo; badge.
-            </p>
-            <Link
-              href="/dashboard"
-              className={buttonVariants({ variant: "outline", className: "mt-4" })}
-            >
-              Go to my businesses
-            </Link>
+          <div className="min-w-0 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Your ID has been checked</h2>
+              <p className="mt-1 text-sm text-gray-700">
+                Status: <IdStatusBadge state={state} />
+              </p>
+              <p className="mt-2 text-sm text-gray-700">
+                Thank you. Our team has reviewed your ID. Your live listings show the &ldquo;ID
+                submitted&rdquo; badge.
+              </p>
+            </div>
+            {continueButton}
           </div>
         </CardContent>
       </Card>
@@ -106,17 +122,26 @@ async function Status() {
     return (
       <Card>
         <CardContent className="flex gap-3 p-5">
-          <Clock3 aria-hidden="true" className="size-6 shrink-0 text-accent-700" />
-          <div className="min-w-0 space-y-3">
+          <Clock3 aria-hidden="true" className="size-6 shrink-0 text-blue-700" />
+          <div className="min-w-0 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Status: Pending review</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Your ID is under review, no action needed
+              </h2>
               <p className="mt-1 text-sm text-gray-700">
-                You submitted your {ID_TYPE_LABELS[latest.idType] ?? "ID"} on{" "}
-                {dateFmt.format(latest.submittedAt)}. We&apos;ll email you when our team has checked
-                it, usually within 1 to 2 working days.
+                Status: <IdStatusBadge state={state} />
+              </p>
+              <p className="mt-2 text-sm text-gray-700">
+                You sent your {ID_TYPE_LABELS[latest.idType] ?? "ID"} on{" "}
+                {dateFmt.format(latest.submittedAt)}. Our team usually reviews it within 1 to 2
+                working days and will notify you. Meanwhile, you can carry on with your listing.
               </p>
             </div>
-            <WithdrawIdentityButton />
+            {continueButton}
+            <div className="border-t border-border pt-3">
+              <p className="text-sm text-gray-600">Sent the wrong photo?</p>
+              <WithdrawIdentityButton />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -127,20 +152,24 @@ async function Status() {
     <div className="space-y-5">
       {state === "REJECTED" && latest ? (
         <FormAlert status="error">
-          <p className="font-semibold">Status: Rejected</p>
-          <p className="mt-1">We couldn&apos;t accept your last submission:</p>
+          <p className="font-semibold">
+            Status: <IdStatusBadge state={state} />
+          </p>
+          <p className="mt-2">Our team couldn&apos;t accept your last ID for this reason:</p>
           <p className="mt-1 font-medium whitespace-pre-line">{latest.rejectionReason}</p>
-          <p className="mt-2">Please submit again below.</p>
+          <p className="mt-2">Please upload a new ID below.</p>
         </FormAlert>
       ) : (
         <p className="flex items-center gap-2 text-sm font-medium text-gray-800">
-          <CircleAlert aria-hidden="true" className="size-4 text-gray-500" />
-          Status: Not submitted
+          <CircleAlert aria-hidden="true" className="size-4 shrink-0 text-gray-500" />
+          <span>
+            Status: <IdStatusBadge state={state} />
+          </span>
         </p>
       )}
       <Card>
         <CardContent className="p-4 sm:p-6">
-          <h2 className="sr-only">{state === "REJECTED" ? "Submit again" : "Submit your ID"}</h2>
+          <h2 className="sr-only">{state === "REJECTED" ? "Upload a new ID" : "Submit your ID"}</h2>
           <IdentityForm accountName={user.fullName} remainingToday={remaining} />
         </CardContent>
       </Card>

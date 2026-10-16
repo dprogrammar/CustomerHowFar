@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleAlert, Clock3, Info, ShieldAlert } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { ownerProgress } from "@/lib/business/progress";
 import { getWizardBusiness } from "@/lib/business/queries";
 import {
   MISSING_LABELS,
@@ -19,6 +20,7 @@ import { STATE_NOT_LIVE_MESSAGE } from "@/lib/service-areas/rules";
 import { isStateActive } from "@/lib/service-areas/server";
 import { FormAlert } from "@/components/auth/form-fields";
 import { BusinessPreview } from "@/components/business/business-preview";
+import { ProgressTracker } from "@/components/business/progress-tracker";
 import { StatusBadge } from "@/components/business/status-badge";
 import { StepAbout } from "@/components/business/wizard/step-about";
 import { StepBasics } from "@/components/business/wizard/step-basics";
@@ -56,7 +58,9 @@ function StatusNotice({
           Changes requested
         </p>
         {comment && <p className="mt-1 whitespace-pre-line">{comment}</p>}
-        <p className="mt-2 text-red-800">Make the changes, then resubmit from the Review step.</p>
+        <p className="mt-2 text-red-800">
+          Make the changes, then send it for review again from the Review step.
+        </p>
       </div>
     );
   }
@@ -101,8 +105,16 @@ function StatusNotice({
 async function EditContent({ params, searchParams }: PageProps<"/business/[id]/edit">) {
   const { id } = await params;
   const user = await requireUser(`/business/${id}/edit`);
-  const { business, completeness, latestDecision } = await getWizardBusiness(id, user.id);
+  const [{ business, completeness, latestDecision }, { state: idState }] = await Promise.all([
+    getWizardBusiness(id, user.id),
+    getIdentityState(user.id),
+  ]);
   const status = business.status as BusinessStatus;
+  // From the server's data only. Inside the wizard the button is shown only when the next step is
+  // elsewhere (the ID check or payment), not for the wizard step the owner is already on.
+  const progress = ownerProgress({ idState, business: { id: business.id, status, completeness } });
+  const actionOutsideWizard =
+    progress.action !== null && !progress.action.href.startsWith(`/business/${business.id}/edit`);
 
   if (status === "SUSPENDED") {
     return (
@@ -197,7 +209,6 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
     );
   } else {
     const missing = missingItems(completeness);
-    const { state: idState } = await getIdentityState(user.id);
     const stateLive = business.stateId ? await isStateActive(business.stateId) : true;
     body = (
       <div className="space-y-6">
@@ -273,6 +284,12 @@ async function EditContent({ params, searchParams }: PageProps<"/business/[id]/e
         </span>
       }
     >
+      <ProgressTracker
+        progress={progress}
+        title="Your progress"
+        showAction={actionOutsideWizard}
+        className="mb-6"
+      />
       <StatusNotice
         status={status}
         needsRecheck={business.needsRecheck}

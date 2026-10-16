@@ -1,3 +1,4 @@
+import { OWNER_ID_STATE_LABELS } from "@/lib/identity/rules";
 import "server-only";
 import { getOwnerDashboard } from "@/lib/business/queries";
 import { STATUS_META, firstIncompleteStep } from "@/lib/business/rules";
@@ -9,12 +10,8 @@ import type { AssistantReply, ListingStatusItem } from "./types";
 // "My listing status" in the chat: the SIGNED-IN owner's own businesses only. The user id always
 // comes from the verified session (never from the browser).
 
-const ID_CHECK_LABELS = {
-  NONE: "Not started",
-  PENDING: "Being checked",
-  APPROVED: "Accepted",
-  REJECTED: "Not accepted. Please submit again",
-} as const;
+// The same four ID check labels the owner sees everywhere else.
+const ID_CHECK_LABELS = OWNER_ID_STATE_LABELS;
 
 export async function listingStatusReply(userId: string | null): Promise<AssistantReply> {
   if (!userId) {
@@ -54,7 +51,7 @@ export async function listingStatusReply(userId: string | null): Promise<Assista
     let action: ListingStatusItem["action"] = null;
     switch (b.status) {
       case "DRAFT":
-        nextStep = "Finish your listing and submit it for review.";
+        nextStep = "Finish your listing and send it for review.";
         action = {
           label: "Continue setup",
           href: `/business/${b.id}/edit?step=${firstIncompleteStep(b.completeness)}`,
@@ -68,7 +65,10 @@ export async function listingStatusReply(userId: string | null): Promise<Assista
             pay?.status === "FAILED"
               ? "Your payment proof wasn't accepted. Upload a new one."
               : "Pay the listing fee so we can review your listing.";
-          action = { label: pay?.status === "FAILED" ? "Upload new proof" : "Pay", href: `/business/${b.id}/pay` };
+          action = {
+            label: pay?.status === "FAILED" ? "Upload new proof" : "Pay",
+            href: `/business/${b.id}/pay`,
+          };
         }
         break;
       case "PENDING_REVIEW":
@@ -80,7 +80,7 @@ export async function listingStatusReply(userId: string | null): Promise<Assista
         }
         break;
       case "REJECTED":
-        nextStep = "Make the changes we asked for, then resubmit.";
+        nextStep = "Make the changes we asked for, then send it for review again.";
         action = { label: "Fix and resubmit", href: `/business/${b.id}/edit?step=1` };
         break;
       case "APPROVED":

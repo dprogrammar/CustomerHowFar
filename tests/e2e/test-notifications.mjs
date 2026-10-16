@@ -705,6 +705,35 @@ try {
   ]);
   await q("update identity_verifications set status = 'PENDING' where id = $1", [ids.idOk]);
   trigger([{ fn: "notifyAdminOfIdentity", args: [ids.idOk, false] }]);
+
+  // Owner confirmations: "ID received" and "listing sent for review" (bell + push settings; there
+  // is no email for these events).
+  const outboxBefore = outbox().length;
+  trigger([
+    { fn: "notifyIdentityReceived", args: [ids.idOk] },
+    { fn: "notifyListingReceived", args: [ids.Live] },
+  ]);
+  const idRec = await notes(users.owner.id, "identity-received");
+  check(
+    "ID received: owner in-app notification, no ID details",
+    idRec.length === 1 &&
+      idRec[0].title === "We've received your ID" &&
+      idRec[0].link === "/account/verify-identity" &&
+      !/NIN|voter|slip|passport|licence|Ola Owner/i.test(idRec[0].title + idRec[0].body),
+  );
+  const lstRec = await notes(users.owner.id, "listing-received");
+  check(
+    "listing received: owner in-app notification with the business name",
+    lstRec.length === 1 &&
+      lstRec[0].title === "Listing sent for review" &&
+      lstRec[0].body.includes(`E2E Notify Live ${run}`),
+  );
+  check(
+    "no email for these two events (none exists for them)",
+    outbox()
+      .slice(outboxBefore)
+      .every((m) => !["identity-received", "listing-received"].includes(m.tag)),
+  );
   ids.report = crypto.randomUUID();
   await q(
     "insert into business_reports (id, business_id, reporter_id, reason, details) values ($1, $2, $3, 'SCAM', 'Asked me to pay a registration fee before any work.')",

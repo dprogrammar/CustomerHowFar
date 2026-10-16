@@ -373,7 +373,10 @@ try {
   check(
     "dashboard banner asks to verify",
     (await O.waitText("Verify your identity")) &&
-      (await O.text()).includes("New listings are approved only after"),
+      (await O.text()).includes(
+        "Your listings can only go live after our team has reviewed your ID",
+      ) &&
+      (await O.text()).includes("Not submitted"),
   );
   await O.axe("dashboard with ID banner");
   const pub = await newPage();
@@ -397,9 +400,19 @@ try {
     [ids.Review],
   );
   await O.go(`/business/${ids.Review}/edit?step=5`);
-  check("review step shows the ID note", await O.waitText("One more thing: verify your identity"));
+  check(
+    "review step shows the ID status (Not submitted)",
+    (await O.waitText("Your ID check:")) && (await O.text()).includes("Not submitted"),
+  );
+  check(
+    "send button and note",
+    (await O.text()).includes("Send for review") &&
+      (await O.text()).includes(
+        "Our team will review your listing and ID. We'll notify you when it's live.",
+      ),
+  );
   await op.click('main input[name="acceptTerms"]');
-  await O.click("Submit");
+  await O.click("Send for review");
   check(
     "submit opens the ID prompt",
     (await op.waitForSelector("dialog[open]", { timeout: 5000 }).then(
@@ -411,7 +424,7 @@ try {
       ),
   );
   await O.axe("wizard ID prompt");
-  await O.click("Submit anyway", "dialog[open]");
+  await O.click("Send anyway", "dialog[open]");
   await op
     .waitForFunction(() => location.pathname.endsWith("/submitted"), { timeout: 20000 })
     .catch(() => {});
@@ -518,7 +531,23 @@ try {
   await O.shot("step3-360");
   await op.click('main input[type="checkbox"]');
   await O.click("Submit for review");
-  check("submitted", await O.waitText("Your ID has been submitted for review", 60000));
+  check("submitted", await O.waitText("Your ID is under review, no action needed", 60000));
+  // "ID received" in the owner's bell (in-app only), with no ID details in it.
+  let idReceived = [];
+  for (let i = 0; i < 20 && idReceived.length === 0; i++) {
+    idReceived = await q(
+      "select title, body, link from notifications where user_id = $1 and type = 'identity-received'",
+      [users.owner.id],
+    );
+    if (idReceived.length === 0) await sleep(500);
+  }
+  check(
+    "owner notified: ID received (no ID details)",
+    idReceived.length === 1 &&
+      idReceived[0].link === "/account/verify-identity" &&
+      !/NIN|slip|voter|passport|licence|Ola Owner/i.test(idReceived[0].title + idReceived[0].body),
+    JSON.stringify(idReceived[0]?.title),
+  );
   let v1 = await one("select * from identity_verifications where user_id = $1", [users.owner.id]);
   const rowChecks = [
     v1.status === "PENDING",
@@ -563,9 +592,12 @@ try {
   console.log("\nAfter submission the owner never sees the images");
   await O.go("/account/verify-identity");
   check(
-    "status: Pending review + withdraw option",
-    (await O.waitText("Status: Pending review")) &&
-      (await O.text()).includes("Withdraw and start again"),
+    "under review: no action needed, Continue to my listing, small withdraw option",
+    (await O.waitText("Your ID is under review, no action needed")) &&
+      (await O.text()).includes("Status: Under review") &&
+      (await O.text()).includes("Continue to my listing") &&
+      (await O.text()).includes("Withdraw and start again") &&
+      (await op.$('main input[type="file"]')) === null,
   );
   check(
     "no image of the ID on the owner's page",
@@ -804,14 +836,15 @@ try {
   console.log("\nOwner: rejected, submit again");
   await O.go("/account/verify-identity");
   check(
-    "status: Rejected with reason",
-    (await O.waitText("Status: Rejected")) &&
+    "status: Changes needed with reason",
+    (await O.waitText("Status: Changes needed")) &&
       (await O.text()).includes("Photo blurry or unreadable"),
   );
   await O.go("/dashboard");
   check(
-    "dashboard: submit again",
-    (await O.waitText("Please submit your ID again")) &&
+    "dashboard: Changes needed notice with Upload a new ID",
+    (await O.waitText("Upload a new ID")) &&
+      (await O.text()).includes("Changes needed") &&
       (await O.text()).includes("Photo blurry or unreadable"),
   );
   await O.go("/account/verify-identity");
@@ -819,7 +852,7 @@ try {
   check("selfie step used capture=user + gallery", true);
   await op.click('main input[type="checkbox"]');
   await O.click("Submit for review");
-  check("resubmitted", await O.waitText("Your ID has been submitted for review", 60000));
+  check("resubmitted", await O.waitText("Your ID is under review, no action needed", 60000));
   const v2 = await one(
     "select * from identity_verifications where user_id = $1 and status = 'PENDING'",
     [users.owner.id],
@@ -972,7 +1005,7 @@ try {
   await submitIdentity(G, gp, { name: "Lola Leaver" });
   await gp.click('main input[type="checkbox"]');
   await G.click("Submit for review");
-  await G.waitText("Your ID has been submitted for review", 60000);
+  await G.waitText("Your ID is under review, no action needed", 60000);
   let w = await one("select * from identity_verifications where user_id = $1", [users.leaver.id]);
   await G.go("/account/verify-identity");
   await G.click("Withdraw and start again");

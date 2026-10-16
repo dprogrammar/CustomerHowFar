@@ -4,8 +4,8 @@ import Link from "next/link";
 import { Bell, CalendarDays, IdCard, KeyRound, LogOut, Mail, Phone } from "lucide-react";
 import { logoutAction } from "@/lib/auth/actions";
 import { initials, requireUser } from "@/lib/auth/session";
-import { IDENTITY_STATE_LABELS } from "@/lib/identity/rules";
 import { getIdentityState } from "@/lib/identity/server";
+import { IdStatusBadge } from "@/components/identity/id-status-badge";
 import { isListingFeeOn } from "@/lib/payments/fee-switch";
 import { prisma } from "@/lib/prisma";
 import { DeleteAccount } from "@/components/account/delete-account";
@@ -110,8 +110,10 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
           <CardTitle>Identity check</CardTitle>
           <CardDescription>
             Business owners share a government ID and a selfie so customers can trust their
-            listings. Status:{" "}
-            <strong className="text-gray-900">{IDENTITY_STATE_LABELS[idState]}</strong>
+            listings.
+            <span className="mt-2 block">
+              Status: <IdStatusBadge state={idState} />
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,7 +128,7 @@ async function AccountContent({ searchParams }: Pick<PageProps<"/account">, "sea
             {idState === "NONE"
               ? "Verify your identity"
               : idState === "REJECTED"
-                ? "Submit your ID again"
+                ? "Upload a new ID"
                 : "View ID check status"}
           </Link>
         </CardContent>

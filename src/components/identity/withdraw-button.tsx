@@ -7,7 +7,10 @@ import { FormAlert } from "@/components/auth/form-fields";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-/** Lets the owner take back an unreviewed submission (e.g. a blurry photo) and start again. */
+/**
+ * Lets the owner take back an unreviewed submission (e.g. a blurry photo) and start again. A small
+ * secondary option behind a confirmation: the page's main action is to continue with the listing.
+ */
 export function WithdrawIdentityButton() {
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<IdentityActionResult | null>(null);
@@ -15,7 +18,7 @@ export function WithdrawIdentityButton() {
   return (
     <div className="space-y-3">
       {result && !result.ok && <FormAlert status="error">{result.error}</FormAlert>}
-      <Button variant="outline" onClick={() => setOpen(true)} disabled={pending}>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} disabled={pending}>
         <Undo2 aria-hidden="true" />
         Withdraw and start again
       </Button>

@@ -170,6 +170,22 @@ export function notifyListingReinstated(businessId: string) {
   });
 }
 
+/** Owner: their listing was sent for review (in-app and push only; no email for this event). */
+export function notifyListingReceived(businessId: string) {
+  return safely("listing-received", async () => {
+    const b = await loadBusiness(businessId);
+    if (!b) return;
+    await deliver({
+      userId: b.owner.id,
+      category: "LISTING",
+      type: "listing-received",
+      title: "Listing sent for review",
+      body: `We've received ${b.name}. Our team will review it and notify you when it's live.`,
+      link: `/dashboard#business-${b.id}`,
+    });
+  });
+}
+
 export function notifyAdminOfSubmission(businessId: string, resubmission: boolean) {
   return safely("admin-submission", async () => {
     const b = await loadBusiness(businessId);
@@ -411,6 +427,25 @@ export function notifyIdentityReviewed(verificationId: string) {
           }),
       });
     }
+  });
+}
+
+/**
+ * Owner: we received their ID check (in-app and push only; no email for this event). Holds no ID
+ * details: not the ID type, name or photos.
+ */
+export function notifyIdentityReceived(verificationId: string) {
+  return safely("identity-received", async () => {
+    const v = await loadIdentity(verificationId);
+    if (!v?.userId || v.status !== "PENDING") return;
+    await deliver({
+      userId: v.userId,
+      category: "LISTING",
+      type: "identity-received",
+      title: "We've received your ID",
+      body: "Thank you. Our team will review it, usually within 1 to 2 working days. No action needed.",
+      link: "/account/verify-identity",
+    });
   });
 }
 

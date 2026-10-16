@@ -2,6 +2,7 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { continueListingHref } from "./progress";
 import { getCompleteness, type BusinessStatus } from "./rules";
 
 const isUuid = (value: string) => z.uuid().safeParse(value).success;
@@ -100,6 +101,32 @@ export async function getOwnerDashboard(userId: string) {
     adminComment: b.moderationDecisions[0]?.comment ?? b.rejectionReason ?? null,
     latestPayment: b.payments[0] ?? null,
   }));
+}
+
+/** Where "Continue to my listing" goes for this owner (see continueListingHref). */
+export async function getContinueListingHref(userId: string) {
+  const rows = await prisma.business.findMany({
+    where: { ownerId: userId, status: { not: "DELETED" } },
+    select: {
+      id: true,
+      status: true,
+      updatedAt: true,
+      address: true,
+      stateId: true,
+      lgaId: true,
+      description: true,
+      logoPublicId: true,
+      _count: { select: { photos: true } },
+    },
+  });
+  return continueListingHref(
+    rows.map((b) => ({
+      id: b.id,
+      status: b.status as BusinessStatus,
+      updatedAt: b.updatedAt,
+      completeness: getCompleteness({ ...b, workPhotoCount: b._count.photos }),
+    })),
+  );
 }
 
 /** Read on the server only. Missing settings row means payment is not required. */

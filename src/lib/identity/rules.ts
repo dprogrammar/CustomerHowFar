@@ -15,11 +15,20 @@ export const ID_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 
 export type IdentityState = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
+/** Admin-facing labels (admin pages). */
 export const IDENTITY_STATE_LABELS: Record<IdentityState, string> = {
   NONE: "Not submitted",
   PENDING: "Pending review",
   APPROVED: "Accepted",
   REJECTED: "Rejected",
+};
+
+/** Owner-facing labels: the same four everywhere an owner sees their ID check (IdStatusBadge). */
+export const OWNER_ID_STATE_LABELS: Record<IdentityState, string> = {
+  NONE: "Not submitted",
+  PENDING: "Under review",
+  APPROVED: "Accepted",
+  REJECTED: "Changes needed",
 };
 
 export const MAX_SUBMISSIONS_PER_DAY = 5;

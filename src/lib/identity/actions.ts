@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
 import { deletePrivateFile, sealPrivateFile, verifyPrivateUpload } from "@/lib/cloudinary";
-import { notifyAdminOfIdentity } from "@/lib/email/notifications";
+import { notifyAdminOfIdentity, notifyIdentityReceived } from "@/lib/email/notifications";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyMessage } from "@/lib/rate-limit";
 import { MAX_SUBMISSIONS_PER_DAY } from "./rules";
@@ -202,7 +202,7 @@ export async function submitIdentityAction(input: SubmitInput): Promise<Identity
   after(async () => {
     // Replaced submissions are never reviewed, so their images go straight away.
     await deleteIdentityImages(superseded);
-    await notifyAdminOfIdentity(id, resubmission);
+    await Promise.all([notifyIdentityReceived(id), notifyAdminOfIdentity(id, resubmission)]);
   });
   refresh();
   return { ok: true, message: "Thank you. Your ID has been submitted for review." };

@@ -309,9 +309,9 @@ try {
   );
   await A.axe("dashboard");
   await pageA.$$eval("main a", (links) =>
-    links.find((l) => l.offsetParent !== null && l.textContent.includes("Continue setup")).click(),
+    links.find((l) => l.offsetParent !== null && l.textContent.trim().startsWith("Edit")).click(),
   );
-  check("'Continue setup' resumes at step 3", await A.waitUrl(/step=3$/));
+  check("'Edit' resumes a draft at its first unfinished step (3)", await A.waitUrl(/step=3$/));
 
   // ---------------------------------------------------------------------------------
   console.log("\nStep 3: About");
@@ -480,7 +480,7 @@ try {
   check(
     "submitted page shown",
     (await A.waitUrl(/\/submitted$/)) &&
-      (await A.waitText("Submitted! Our team will review your listing")),
+      (await A.waitText("Our team will review your listing and ID")),
   );
   await A.axe("submitted page");
   biz = (await q("select status, submitted_at from businesses where id = $1", [bizId]))[0];
@@ -509,14 +509,14 @@ try {
     await A.waitText("Changes requested: Please add a clearer cover photo."),
   );
   await pageA.$$eval("main a", (l) =>
-    l.find((x) => x.offsetParent !== null && x.textContent.includes("Fix and resubmit")).click(),
+    l.find((x) => x.offsetParent !== null && x.textContent.trim().startsWith("Edit")).click(),
   );
   check(
-    "'Fix and resubmit' opens the wizard with the comment",
+    "'Edit' opens the wizard with the comment",
     (await A.waitUrl(/step=1$/)) && (await A.waitText("Please add a clearer cover photo.")),
   );
   await A.go(`/business/${bizId}/edit?step=5`);
-  await A.waitText("Resubmit");
+  await A.waitText("Send for review again");
   await (await A.el('main input[name="acceptTerms"]')).evaluate((e) => e.click());
   await A.submitMain();
   check("unpaid resubmit with switch ON goes to /pay", await A.waitUrl(/\/pay$/));

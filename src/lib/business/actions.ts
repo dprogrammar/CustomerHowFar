@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
-import { notifyAdminOfSubmission } from "@/lib/email/notifications";
+import { notifyAdminOfSubmission, notifyListingReceived } from "@/lib/email/notifications";
 import { Prisma } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/auth/actions";
 import { ensureProfile } from "@/lib/auth/profile";
@@ -628,7 +628,12 @@ export async function submitBusinessAction(
   if (nextStatus === "PENDING_REVIEW") {
     // After the response: email never delays or undoes the submission.
     const resubmission = business.submittedAt !== null || business.status === "REJECTED";
-    after(() => notifyAdminOfSubmission(businessId, resubmission));
+    after(() =>
+      Promise.all([
+        notifyListingReceived(businessId),
+        notifyAdminOfSubmission(businessId, resubmission),
+      ]),
+    );
   }
 
   redirect(

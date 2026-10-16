@@ -59,6 +59,7 @@ const SUITES = [
   ["test-admin", full("test-admin.mjs")],
   ["test-payments", full("test-payments.mjs")],
   ["test-identity", full("test-identity.mjs")],
+  ["test-owner-progress", full("test-owner-progress.mjs")],
   ["test-users", full("test-users.mjs")],
   ["test-trust", full("test-trust.mjs")],
   ["test-no-install", basic("test-no-install.mjs")],
