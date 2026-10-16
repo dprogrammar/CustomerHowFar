@@ -54,8 +54,8 @@ await del(
 );
 // Dev baseline settings: listing fee OFF, homepage "FREE" promotion ON.
 await del(
-  "settings reset to the dev baseline (fee off, promo on)",
-  "update app_settings set payment_required = false, homepage_free_promo = true where id = 1 and (payment_required or not homepage_free_promo)",
+  "settings reset to the dev baseline (fee off, promo on, owner stats hidden)",
+  "update app_settings set payment_required = false, homepage_free_promo = true, owner_stats_visible = false where id = 1 and (payment_required or not homepage_free_promo or owner_stats_visible)",
   [],
 );
 await del("QR test campaigns", "delete from qr_campaigns where name like 'e2e-%'", []);
@@ -97,6 +97,7 @@ const base = await one(`select
   (select string_agg(slug, ',') from states where is_active) live_states,
   (select payment_required from app_settings where id = 1) fee_on,
   (select homepage_free_promo from app_settings where id = 1) promo_on,
+  (select owner_stats_visible from app_settings where id = 1) owner_stats,
   (select count(*) from profiles where role = 'ADMIN' and email not like '%@example.com')::int dev_admins`);
 await db2.end();
 const files = {};
@@ -121,6 +122,7 @@ const ok =
   base.live_states === "lagos" &&
   base.fee_on === false &&
   base.promo_on === true &&
+  base.owner_stats === false &&
   base.dev_admins >= 1;
 console.log(ok ? "CLEAN: dev database back to its baseline" : "NOT CLEAN: see above");
 process.exit(ok ? 0 : 1);

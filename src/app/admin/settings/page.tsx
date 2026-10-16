@@ -27,6 +27,10 @@ const FIELD_LABELS: Record<string, { label: string; format: (v: string) => strin
     label: "'Free' promotion on homepage",
     format: (v) => (v === "true" ? "On" : "Off"),
   },
+  ownerStatsVisible: {
+    label: "Show stats to business owners",
+    format: (v) => (v === "true" ? "On" : "Off"),
+  },
 };
 
 async function Settings() {
@@ -40,7 +44,7 @@ async function Settings() {
         className="rounded-xl border border-border bg-white p-4 shadow-card sm:p-6"
       >
         <h2 id="fee-title" className="mb-4 text-lg font-semibold text-gray-900">
-          Listing fee and payment methods
+          Listing fee, payments and visibility
         </h2>
         <SettingsForm
           initial={{
@@ -51,6 +55,7 @@ async function Settings() {
             bankAccountNumber: settings.bankAccountNumber,
             bankAccountName: settings.bankAccountName,
             homepageFreePromo: settings.homepageFreePromo,
+            ownerStatsVisible: settings.ownerStatsVisible,
           }}
         />
       </section>

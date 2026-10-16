@@ -30,8 +30,11 @@ const fns: Record<string, (...a: any[]) => Promise<unknown>> = {
   recordSearch: server.recordSearch,
   rollUpAnalytics: (now?: number) => rollup.rollUpAnalytics(now ?? Date.now()),
   sendWeeklyOwnerStats: (now?: number) => weekly.sendWeeklyOwnerStats(now ?? Date.now()),
-  getOwnerStats: async (ownerId: string, today?: string) =>
-    Object.fromEntries(await queries.getOwnerStats(ownerId, today)),
+  // null while the "Show stats to business owners" switch is off.
+  getOwnerStats: async (ownerId: string, today?: string) => {
+    const stats = await queries.getOwnerStats(ownerId, today);
+    return stats ? Object.fromEntries(stats) : null;
+  },
   getSiteAnalytics: queries.getSiteAnalytics,
   getQrCampaignAnalytics: async (days: number) =>
     Object.fromEntries(await queries.getQrCampaignAnalytics(days)),

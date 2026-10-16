@@ -19,7 +19,7 @@ export function OwnerStats({
 }: {
   businessId: string;
   businessName: string;
-  stats: OwnerBusinessStats | undefined;
+  stats: OwnerBusinessStats | null | undefined;
 }) {
   const s = stats ?? {
     views7: 0,

@@ -306,6 +306,7 @@ const settingsSchema = z.object({
     .transform((v) => (v === "" ? null : v)),
   bankAccountName: optionalText(80),
   homepageFreePromo: z.boolean(),
+  ownerStatsVisible: z.boolean(),
 });
 
 type SettingsInput = z.output<typeof settingsSchema>;
@@ -362,6 +363,7 @@ export async function updateSettingsAction(
       "bankAccountNumber",
       "bankAccountName",
       "homepageFreePromo",
+      "ownerStatsVisible",
     ] as const;
     const diff = fields
       .filter((field) => current[field] !== next[field])

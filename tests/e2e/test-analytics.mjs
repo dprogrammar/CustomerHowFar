@@ -207,6 +207,12 @@ const realOwnerNotesBefore = (
   )
 ).n;
 const ids = {};
+// This suite checks owners' own stats and the Monday summary: they show only while the admin's
+// "Show stats to business owners" switch is on, so it's on for this run and put back afterwards.
+const statsSwitchBefore = (
+  await one("select owner_stats_visible from app_settings where id = 1")
+).owner_stats_visible;
+await q("update app_settings set owner_stats_visible = true where id = 1");
 try {
   console.log("Setup");
   console.log(
@@ -863,6 +869,7 @@ try {
   console.log("  ERROR", e.message);
 } finally {
   console.log("\nCleanup");
+  await q("update app_settings set owner_stats_visible = $1 where id = 1", [statsSwitchBefore]);
   const idList = Object.values(users)
     .map((u) => u.id)
     .filter(Boolean);

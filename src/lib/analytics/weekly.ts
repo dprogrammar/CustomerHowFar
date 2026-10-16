@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email/send";
 import { deliver, isTestMode } from "@/lib/notifications/deliver";
 import { prisma } from "@/lib/prisma";
 import { ownerStatsMessage } from "./messages";
+import { areOwnerStatsVisible } from "./owner-visibility";
 import { addDays, dayDate, lagosDay } from "./rules";
 
 /**
@@ -15,6 +16,8 @@ import { addDays, dayDate, lagosDay } from "./rules";
 export async function sendWeeklyOwnerStats(now = Date.now()) {
   const today = lagosDay(now);
   if (new Date(`${today}T00:00:00Z`).getUTCDay() !== 1) return 0;
+  // Nothing while the admin hides stats from owners (in-app, push and email alike).
+  if (!(await areOwnerStatsVisible())) return 0;
   // Claim this Monday first, so a second run can never send the summary twice.
   const claimed = await prisma.$executeRaw`
     INSERT INTO analytics_daily (day, metric, key, value) VALUES (${today}::date, 'weekly_sent', '', 0)

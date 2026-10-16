@@ -6,6 +6,12 @@ import { requireAdmin } from "@/lib/auth/session";
 import { getActiveCategories, getStates } from "@/lib/data/catalog";
 import { getSiteAnalytics } from "@/lib/analytics/queries";
 import { RANGES, parseRange, percentChange } from "@/lib/analytics/rules";
+import {
+  ALL_BUSINESSES_SORTS,
+  getAllBusinessesStats,
+  type AllBusinessesSort,
+} from "@/lib/analytics/admin-stats";
+import { AllBusinessesTable } from "@/components/analytics/all-businesses-table";
 import { TrendChart } from "@/components/analytics/trend-chart";
 import { cn } from "@/lib/utils";
 
@@ -234,11 +240,23 @@ function searchLabel(
 
 async function Analytics({ searchParams }: Pick<PageProps<"/admin/analytics">, "searchParams">) {
   await requireAdmin();
-  const range = parseRange((await searchParams).range);
-  const [a, categories, states] = await Promise.all([
+  const sp = await searchParams;
+  const range = parseRange(sp.range);
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+  // "All businesses" table: search, sort and page from the address (whitelisted).
+  const table = {
+    q: one(sp.bq).slice(0, 80),
+    sort: (ALL_BUSINESSES_SORTS as readonly string[]).includes(one(sp.bsort))
+      ? (one(sp.bsort) as AllBusinessesSort)
+      : "views",
+    dir: one(sp.bdir) === "asc" ? ("asc" as const) : ("desc" as const),
+    page: Math.min(10_000, Math.max(1, Number.parseInt(one(sp.bpage), 10) || 1)),
+  };
+  const [a, categories, states, all] = await Promise.all([
     getSiteAnalytics(range.days),
     getActiveCategories(),
     getStates(),
+    getAllBusinessesStats({ days: range.days, ...table }),
   ]);
   const names = {
     categories: new Map(categories.map((c) => [c.slug, c.name])),
@@ -255,7 +273,14 @@ async function Analytics({ searchParams }: Pick<PageProps<"/admin/analytics">, "
           {RANGES.map((r) => (
             <li key={r.key}>
               <Link
-                href={`/admin/analytics?range=${r.key}`}
+                href={`/admin/analytics?${new URLSearchParams({
+                  // The search and sort of "All businesses" carry over; range stays last.
+                  ...(table.q ? { bq: table.q } : {}),
+                  ...(table.sort !== "views" || table.dir !== "desc"
+                    ? { bsort: table.sort, bdir: table.dir }
+                    : {}),
+                  range: r.key,
+                }).toString()}`}
                 aria-current={r.key === range.key ? "page" : undefined}
                 className={cn(
                   "inline-flex h-10 items-center rounded-full px-4 text-sm font-medium ring-1",
@@ -487,6 +512,22 @@ async function Analytics({ searchParams }: Pick<PageProps<"/admin/analytics">, "
           <ShareRows items={a.pages} labels={PAGE_LABELS} />
         </Panel>
       </div>
+
+      <section
+        id="all-businesses"
+        aria-labelledby="all-businesses-title"
+        className="mt-6 scroll-mt-24 rounded-xl border border-border bg-white p-4 shadow-card"
+      >
+        <h2 id="all-businesses-title" className="text-base font-semibold text-gray-900">
+          All businesses
+        </h2>
+        <p className="mt-0.5 mb-3 text-sm text-gray-700">
+          Every business with its views and taps for{" "}
+          {range.days === 1 ? "today" : `the last ${range.days} days`}, including those with no
+          activity. Contact rate: WhatsApp, call and email taps per 100 views.
+        </p>
+        <AllBusinessesTable rows={all.rows} total={all.total} range={range.key} {...table} />
+      </section>
 
       <p className="mt-6 text-xs text-gray-600">
         Anonymous and cookie-free: visitors are counted with a code that changes every day and

@@ -17,6 +17,7 @@ export type SettingsValues = {
   bankAccountNumber: string;
   bankAccountName: string;
   homepageFreePromo: boolean;
+  ownerStatsVisible: boolean;
 };
 
 function Switch({
@@ -73,6 +74,8 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
     name: useId(),
     promo: useId(),
     promoHint: useId(),
+    stats: useId(),
+    statsHint: useId(),
   };
   const set = <K extends keyof SettingsValues>(key: K, value: SettingsValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -123,6 +126,13 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         : next.paymentRequired && !initial.paymentRequired
           ? "The homepage 'Free' promotion will be switched off, because it can't show while the listing fee is on."
           : "The 'Free' promotion is removed from the homepage.",
+    );
+  }
+  if (next.ownerStatsVisible !== initial.ownerStatsVisible) {
+    effects.push(
+      next.ownerStatsVisible
+        ? "Business owners see their own views and WhatsApp/call taps on their dashboard (with full history), and get the Monday summary if they have it on."
+        : "Owners stop seeing their stats: the dashboard section, the Monday summary and old summaries in their notifications are hidden. Statistics are still collected; you still see everything.",
     );
   }
   if (next.manualTransferEnabled !== initial.manualTransferEnabled) {
@@ -277,6 +287,30 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         </div>
         <p className="text-sm font-medium text-gray-900">
           Currently: {next.homepageFreePromo ? "On" : "Off"}
+        </p>
+      </section>
+
+      <section aria-labelledby={ids.stats} className="space-y-2 border-t border-border pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p id={ids.stats} className="text-base font-semibold text-gray-900">
+              Show stats to business owners
+            </p>
+            <p id={ids.statsHint} className="mt-1 text-sm text-gray-700">
+              When on, owners see their own views and WhatsApp/call taps on their dashboard and can
+              get a weekly summary. When off, they see none of their numbers. Statistics are always
+              collected, and admins always see them.
+            </p>
+          </div>
+          <Switch
+            checked={values.ownerStatsVisible}
+            onChange={(v) => set("ownerStatsVisible", v)}
+            labelId={ids.stats}
+            describedBy={ids.statsHint}
+          />
+        </div>
+        <p className="text-sm font-medium text-gray-900">
+          Currently: {values.ownerStatsVisible ? "On" : "Off"}
         </p>
       </section>
 

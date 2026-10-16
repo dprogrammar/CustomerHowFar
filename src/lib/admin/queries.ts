@@ -193,6 +193,7 @@ export async function getSettingsWithHistory() {
     bankAccountNumber: settings?.bankAccountNumber ?? "",
     bankAccountName: settings?.bankAccountName ?? "",
     homepageFreePromo: settings?.homepageFreePromo ?? true,
+    ownerStatsVisible: settings?.ownerStatsVisible ?? false,
     updatedAt: settings?.updatedAt ?? null,
     history,
   };

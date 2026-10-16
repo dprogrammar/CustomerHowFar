@@ -1,3 +1,5 @@
+import { getAdminBusinessStats } from "@/lib/analytics/admin-stats";
+import { AdminBusinessStats } from "@/components/analytics/admin-business-stats";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -88,6 +90,8 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
   await requireAdmin();
   const { id } = await params;
   const { business: b, duplicates, hasPaid, identity } = await getAdminBusiness(id);
+  // Admin only (this page checks requireAdmin above), whatever owners are allowed to see.
+  const stats = await getAdminBusinessStats(b.id);
   const status = b.status as BusinessStatus;
   const hours = b.openingHours as OpeningHours | null;
   const fullSize = (publicId: string) => cloudinaryUrl(publicId, { width: 2000 });
@@ -143,6 +147,9 @@ async function Detail({ params }: PageProps<"/admin/listings/[id]">) {
             </div>
           )}
 
+          <Section title="Statistics">
+            <AdminBusinessStats businessId={b.id} businessName={b.name} stats={stats} />
+          </Section>
           <Section title="Business">
             <dl className="divide-y divide-border">
               <Field label="Category">{b.category.name}</Field>

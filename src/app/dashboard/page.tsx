@@ -77,7 +77,8 @@ function BusinessCardRow({
   idState,
 }: {
   b: DashboardBusiness;
-  stats?: OwnerBusinessStats;
+  /** undefined: owners don't see stats right now; null: no activity yet. */
+  stats?: OwnerBusinessStats | null;
   idState: IdentityState;
 }) {
   const image = b.coverPublicId ?? b.photos[0]?.publicId ?? b.logoPublicId;
@@ -152,7 +153,8 @@ function BusinessCardRow({
           <ProgressTracker progress={progress} title={`Progress for ${b.name}`} className="mt-3" />
           {b.latestPayment && <PaymentSummary payment={b.latestPayment} />}
           {/* Live listings (and any that had visitors this month) show their private stats. */}
-          {(b.status === "APPROVED" || stats) && (
+          {/* Only while the admin shows stats to owners (stats is undefined otherwise). */}
+          {stats !== undefined && (b.status === "APPROVED" || stats) && (
             <OwnerStats businessId={b.id} businessName={b.name} stats={stats} />
           )}
 
@@ -328,7 +330,12 @@ async function DashboardContent() {
       ) : (
         <ul className="mt-6 space-y-4">
           {businesses.map((b) => (
-            <BusinessCardRow key={b.id} b={b} stats={stats.get(b.id)} idState={identity.state} />
+            <BusinessCardRow
+              key={b.id}
+              b={b}
+              stats={stats ? (stats.get(b.id) ?? null) : undefined}
+              idState={identity.state}
+            />
           ))}
         </ul>
       )}

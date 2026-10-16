@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { areOwnerStatsVisible } from "./owner-visibility";
 import { businessRowsSql, siteRowsSql } from "./rollup";
 import {
   PATH_TYPES,
@@ -292,10 +293,19 @@ export type OwnerBusinessStats = {
 };
 
 /**
- * Views and contact taps for the signed-in owner's own businesses only (filtered by owner in
- * the query itself). Today counts as one of the 7/30 days.
+ * What an owner may see of their own listings' stats: null while the admin's "Show stats to
+ * business owners" switch is off (checked here, on the server, for every owner-facing read).
  */
 export async function getOwnerStats(ownerId: string, today = lagosDay()) {
+  if (!(await areOwnerStatsVisible())) return null;
+  return computeOwnerStats(ownerId, today);
+}
+
+/**
+ * Views and contact taps for one owner's businesses (filtered by owner in the query itself).
+ * Today counts as one of the 7/30 days. Internal: owners go through getOwnerStats.
+ */
+export async function computeOwnerStats(ownerId: string, today = lagosDay()) {
   const from = addDays(today, -29);
   const rows = await prisma.$queryRaw<
     {

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Smartphone } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { areOwnerStatsVisible } from "@/lib/analytics/owner-visibility";
 import { prisma } from "@/lib/prisma";
 import { NOTIFICATION_CATEGORIES } from "@/lib/notifications/categories";
 import { getPreferences, listDevices } from "@/lib/notifications/server";
@@ -24,14 +25,19 @@ const dateFmt = new Intl.DateTimeFormat("en-NG", {
 
 async function Settings() {
   const user = await requireUser("/account/notifications");
-  const [prefs, devices, businessCount] = await Promise.all([
+  const [prefs, devices, businessCount, statsVisible] = await Promise.all([
     getPreferences(user.id),
     listDevices(user.id),
     prisma.business.count({ where: { ownerId: user.id, status: { not: "DELETED" } } }),
+    areOwnerStatsVisible(),
   ]);
   const isAdmin = user.role === "ADMIN";
   const categories = NOTIFICATION_CATEGORIES.filter(
-    (c) => (!c.adminOnly || isAdmin) && (!c.ownerOnly || businessCount > 0),
+    (c) =>
+      (!c.adminOnly || isAdmin) &&
+      (!c.ownerOnly || businessCount > 0) &&
+      // The weekly stats summary only exists while the admin shows stats to owners.
+      (c.key !== "WEEKLY_STATS" || statsVisible),
   );
 
   return (

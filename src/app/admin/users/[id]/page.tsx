@@ -1,3 +1,4 @@
+import { contactRate, getAdminUserStats, type Totals } from "@/lib/analytics/admin-stats";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -58,10 +59,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-async function Detail({ params }: PageProps<"/admin/users/[id]">) {
+const STAT_RANGES = [7, 30, 90] as const;
+const nf = (n: number) => n.toLocaleString("en-NG");
+const rateText = (t: Totals) => {
+  const r = contactRate(t);
+  return r === null ? "–" : `${r.toFixed(1)}%`;
+};
+
+async function Detail({ params, searchParams }: PageProps<"/admin/users/[id]">) {
   const admin = await requireAdmin();
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const { user: u, identity, history, activeAdmins } = await getAdminUser(id);
+  // Admin only (requireAdmin above), whatever owners are allowed to see.
+  const days = STAT_RANGES.find((d) => String(d) === sp.stats) ?? 30;
+  const stats = await getAdminUserStats(u.id, days);
   const status = u.status as "ACTIVE" | "SUSPENDED";
 
   return (
@@ -141,6 +152,99 @@ async function Detail({ params }: PageProps<"/admin/users/[id]">) {
                   </li>
                 ))}
               </ul>
+            )}
+          </Card>
+
+          <Card title="Statistics">
+            <nav aria-label="Statistics period" className="mb-3">
+              <ul className="flex flex-wrap gap-2">
+                {STAT_RANGES.map((d) => (
+                  <li key={d}>
+                    <Link
+                      href={`/admin/users/${u.id}?stats=${d}`}
+                      scroll={false}
+                      aria-current={d === days ? "page" : undefined}
+                      className={
+                        d === days
+                          ? "inline-flex h-9 items-center rounded-full bg-brand-700 px-3.5 text-sm font-medium text-white"
+                          : "inline-flex h-9 items-center rounded-full bg-white px-3.5 text-sm font-medium text-gray-800 ring-1 ring-border hover:bg-brand-50"
+                      }
+                    >
+                      {d} days
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            {stats.businesses.length === 0 ? (
+              <p className="text-sm text-gray-600">No businesses.</p>
+            ) : (
+              <div
+                className="relative overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Statistics table"
+              >
+                <table className="w-full text-sm">
+                  <caption className="sr-only">
+                    Views and taps for each business, last {days} days
+                  </caption>
+                  <thead className="text-left text-gray-700">
+                    <tr className="border-b border-border">
+                      <th scope="col" className="py-1.5 font-medium">
+                        Business
+                      </th>
+                      <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+                        Views
+                      </th>
+                      <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+                        WhatsApp taps
+                      </th>
+                      <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+                        Call taps
+                      </th>
+                      <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+                        Contact rate
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {stats.businesses.map((b) => (
+                      <tr key={b.id}>
+                        <th scope="row" className="py-2 text-left font-normal">
+                          <Link
+                            href={`/admin/listings/${b.id}`}
+                            className="font-medium text-brand-700 underline"
+                          >
+                            {b.name}
+                          </Link>
+                          <span className="block text-xs text-gray-600">
+                            {STATUS_META[b.status as BusinessStatus]?.label ?? b.status}
+                          </span>
+                        </th>
+                        <td className="py-2 pl-3 text-right tabular-nums">{nf(b.views)}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums">{nf(b.whatsapp)}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums">{nf(b.calls)}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums">{rateText(b)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border font-semibold text-gray-900">
+                      <th scope="row" className="py-2 text-left">
+                        All {stats.businesses.length} business
+                        {stats.businesses.length === 1 ? "" : "es"}
+                      </th>
+                      <td className="py-2 pl-3 text-right tabular-nums">{nf(stats.total.views)}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums">
+                        {nf(stats.total.whatsapp)}
+                      </td>
+                      <td className="py-2 pl-3 text-right tabular-nums">{nf(stats.total.calls)}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums">{rateText(stats.total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             )}
           </Card>
 

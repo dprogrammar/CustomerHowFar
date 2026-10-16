@@ -34,6 +34,9 @@ model AppSetting {
   /// Launch-period "FREE" promotion on the homepage. Never shown while the listing fee is on: a
   /// database trigger switches it off whenever paymentRequired is switched on.
   homepageFreePromo     Boolean  @default(true) @map("homepage_free_promo")
+  /// Owners see their own listing stats (dashboard "Your stats", Monday summary). Off by default:
+  /// statistics are still collected and admins always see them; turning this on shows full history.
+  ownerStatsVisible     Boolean  @default(false) @map("owner_stats_visible")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
